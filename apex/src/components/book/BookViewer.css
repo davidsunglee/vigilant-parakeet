@@ -1,0 +1,295 @@
+.book-viewer-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background-color: var(--bg-color);
+}
+
+.book-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 30px;
+    background-color: var(--bg-card);
+    border-bottom: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+    z-index: 10;
+}
+
+.close-book-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--text-secondary);
+    font-weight: 600;
+    padding: 8px 16px;
+    border-radius: var(--radius);
+    transition: var(--transition);
+}
+
+.close-book-btn:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+}
+
+.book-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--accent-color);
+}
+
+.book-canvas-area {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    padding: 20px;
+    background-image: radial-gradient(circle at center, #1b2129 0%, var(--bg-color) 100%);
+}
+
+.book-wrapper {
+    box-shadow: var(--shadow-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 90%;
+    height: 90%;
+    max-width: 1600px;
+}
+
+.nav-arrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background-color: var(--bg-card);
+    color: var(--text-primary);
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow-md);
+    z-index: 5;
+    transition: var(--transition);
+    border: 1px solid var(--border-color);
+}
+
+.nav-arrow:hover {
+    background-color: var(--border-focus);
+    color: white;
+    transform: translateY(-50%) scale(1.1);
+}
+
+.nav-arrow.left {
+    left: 40px;
+}
+
+.nav-arrow.right {
+    right: 40px;
+}
+
+/* Book pages */
+.page {
+    background-color: #f7f3e8;
+    /* Classic book page color */
+    color: #2c2f33;
+    /* Dark text for contrast */
+    box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.05);
+    /* Page shadow */
+    overflow: hidden;
+    border-right: 1px solid rgba(0, 0, 0, 0.1);
+    border-left: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.page-content {
+    padding: 40px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+.page-media-layout {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.page-title {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: #1a1b1e;
+    margin-bottom: 20px;
+    border-bottom: 2px solid var(--accent-color);
+    padding-bottom: 10px;
+}
+
+.text-content p {
+    font-size: 1.15rem;
+    line-height: 1.7;
+    color: #3b3f45;
+    margin-bottom: 20px;
+}
+
+.fun-fact-box {
+    margin-top: auto;
+    margin-bottom: 40px;
+    background-color: #e3ebf3;
+    border-left: 5px solid var(--border-focus);
+    padding: 15px;
+    border-radius: 0 8px 8px 0;
+}
+
+.fun-fact-box h4 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--border-focus);
+    margin-bottom: 5px;
+}
+
+.visual-content {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.placeholder-image {
+    width: 100%;
+    height: 80%;
+    background: linear-gradient(135deg, #e2e8f0, #cbd5e1);
+    border: 4px dashed #94a3b8;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 30px;
+    text-align: center;
+    color: #64748b;
+    font-weight: 500;
+    font-style: italic;
+    font-size: 1.1rem;
+}
+
+.page-number {
+    position: absolute;
+    bottom: 20px;
+    font-weight: 700;
+    color: #a0aec0;
+    font-size: 1rem;
+}
+
+.page-left .page-number {
+    left: 40px;
+}
+
+.page-right .page-number {
+    right: 40px;
+}
+
+/* Book Cover Styling */
+.page-cover {
+    background: linear-gradient(145deg, var(--bg-card), var(--bg-color));
+    color: white;
+}
+
+.page-cover .page-content {
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+.page-cover h2 {
+    font-size: 2.5rem;
+    color: var(--accent-color);
+    margin-bottom: 40px;
+}
+
+.cover-combatants {
+    background: rgba(0, 0, 0, 0.3);
+    padding: 30px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border-color);
+    width: 100%;
+}
+
+.cover-combatants h3 {
+    font-size: 2rem;
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+.cover-combatants span {
+    display: block;
+    margin: 15px 0;
+    font-size: 1.5rem;
+    color: var(--vs-color);
+    font-weight: 800;
+    font-style: italic;
+}
+
+/* Checklist Styling */
+.checklist-grid {
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.checklist-header,
+.checklist-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    padding: 10px;
+    text-align: center;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.checklist-header {
+    font-weight: 800;
+    background-color: rgba(0, 0, 0, 0.05);
+    border-radius: 6px;
+}
+
+.trait-name {
+    text-align: left;
+    font-weight: 600;
+    color: #1a1b1e;
+}
+
+.check-box {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.confirm-btn {
+    margin-top: auto;
+    margin-bottom: 40px;
+    background-color: var(--accent-color);
+    color: white;
+    padding: 15px;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 1.1rem;
+    transition: var(--transition);
+}
+
+.confirm-btn:hover {
+    background-color: var(--accent-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(247, 129, 102, 0.4);
+}
+
+.generated-image {
+    width: 100%;
+    height: 100%;
+    max-height: 400px;
+    object-fit: cover;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
