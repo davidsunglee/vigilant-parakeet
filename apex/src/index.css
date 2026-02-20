@@ -5,24 +5,24 @@
   --bg-secondary: #161b22;
   --bg-card: #1c2128;
   --bg-card-hover: #22272e;
-  
+
   --text-primary: #e6edf3;
   --text-secondary: #848d97;
-  
+
   --accent-color: #f78166;
   --accent-hover: #ff9176;
-  
+
   --danger-color: #f85149;
   --danger-hover: #ff6a63;
-  
+
   --vs-color: #a371f7;
-  
+
   --border-color: #30363d;
   --border-focus: #58a6ff;
-  
-  --shadow-sm: 0 4px 12px rgba(0,0,0,0.3);
-  --shadow-lg: 0 8px 24px rgba(0,0,0,0.5);
-  
+
+  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+
   --radius: 12px;
   --font-family: 'Outfit', system-ui, -apple-system, sans-serif;
   --transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
@@ -38,7 +38,8 @@ body {
   background-color: var(--bg-color);
   color: var(--text-primary);
   font-family: var(--font-family);
-  font-size: 18px; /* High legibility */
+  font-size: 18px;
+  /* High legibility */
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
 }
@@ -211,6 +212,14 @@ button {
   border-radius: var(--radius);
   overflow: hidden;
   transition: var(--transition);
+  display: flex;
+  flex-direction: column;
+}
+
+.story-card-inner {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .story-card:hover {
@@ -235,7 +244,7 @@ button {
   font-size: 1.4rem;
   font-weight: 800;
   z-index: 2;
-  text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
 }
 
 .cover-vs {
@@ -254,7 +263,7 @@ button {
   left: 0;
   width: 100%;
   height: 100%;
-  background-image: repeating-linear-gradient(45deg, rgba(255,255,255,0.02) 0px, rgba(255,255,255,0.02) 2px, transparent 2px, transparent 10px);
+  background-image: repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.02) 0px, rgba(255, 255, 255, 0.02) 2px, transparent 2px, transparent 10px);
   z-index: 1;
 }
 
@@ -291,10 +300,8 @@ button {
 
 .card-actions {
   display: flex;
+  margin-top: auto;
   border-top: 1px solid var(--border-color);
-  border-bottom-left-radius: var(--radius);
-  border-bottom-right-radius: var(--radius);
-  overflow: hidden;
 }
 
 .read-btn {
@@ -308,6 +315,7 @@ button {
   justify-content: center;
   gap: 8px;
   transition: var(--transition);
+  border-radius: 0;
 }
 
 .read-btn:hover {
@@ -321,9 +329,35 @@ button {
   color: var(--text-secondary);
   border-left: 1px solid var(--border-color);
   transition: var(--transition);
+  border-radius: 0;
 }
 
 .delete-btn:hover {
   background-color: rgba(248, 81, 73, 0.1);
   color: var(--danger-color);
+}
+
+.delete-btn.delete-confirm {
+  flex: 1;
+  background-color: var(--danger-color);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 15px 16px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  border-left: none;
+  animation: pulse-danger 0.6s ease infinite alternate;
+}
+
+@keyframes pulse-danger {
+  from {
+    background-color: var(--danger-color);
+  }
+
+  to {
+    background-color: var(--danger-hover);
+  }
 }

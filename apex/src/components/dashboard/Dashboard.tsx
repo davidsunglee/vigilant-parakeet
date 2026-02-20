@@ -42,8 +42,15 @@ export const Dashboard: React.FC<{ onReadStory: (id: string) => void }> = ({ onR
     };
 
     const handleDelete = async (id: string) => {
-        if (window.confirm("Are you sure you want to permanently delete this story?")) {
+        console.log('[Dashboard] Deleting story:', id);
+        // Optimistically remove from UI immediately
+        setStories(prev => prev.filter(s => s.metadata.id !== id));
+        try {
             await StorageService.deleteStory(id);
+            console.log('[Dashboard] Story deleted successfully');
+        } catch (error) {
+            console.error('[Dashboard] Delete failed:', error);
+            // Reload to restore if delete failed
             await loadStories();
         }
     };
@@ -123,7 +130,11 @@ export const Dashboard: React.FC<{ onReadStory: (id: string) => void }> = ({ onR
                                         <button onClick={() => onReadStory(story.metadata.id)} className="read-btn">
                                             <BookOpen size={16} /> Read Full Book
                                         </button>
-                                        <button onClick={() => handleDelete(story.metadata.id)} className="delete-btn" aria-label="Delete Story">
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); handleDelete(story.metadata.id); }}
+                                            className="delete-btn"
+                                            aria-label="Delete Story"
+                                        >
                                             <Trash2 size={16} />
                                         </button>
                                     </div>
