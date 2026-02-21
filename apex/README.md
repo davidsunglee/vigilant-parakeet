@@ -41,7 +41,7 @@ apex/src/
 
 | Service | Responsibility | Model |
 |---------|---------------|-------|
-| **LlmService** | Animal profiles, aspect narratives, showdown/outcome text, trait checklists | `gemini-2.0-flash` |
+| **LlmService** | Animal profiles, aspect narratives, showdown/outcome text, trait checklists | `gemini-3-flash-preview` |
 | **ImageService** | Page illustrations and cover art | `gemini-2.5-flash-image` |
 | **StorageService** | CRUD operations on IndexedDB via `localforage` | — |
 | **StoryGeneratorService** | Orchestrates the full pipeline: profiles → outcome → pages → images → manifest | — |
@@ -113,7 +113,7 @@ Scientific Classification · Natural Habitat · Size & Weight · Hunting & Diet 
 |-------|-----------|
 | **Framework** | React 18 + TypeScript |
 | **Build** | Vite 5 |
-| **AI (Text)** | Google Gemini (`gemini-2.0-flash`) via `@google/genai` |
+| **AI (Text)** | Google Gemini (`gemini-3-flash-preview` & `gemini-2.0-flash`) via `@google/genai` |
 | **AI (Images)** | Google Gemini (`gemini-2.5-flash-image`) via `@google/genai` |
 | **Storage** | IndexedDB via `localforage` |
 | **Book Viewer** | `react-pageflip` |
