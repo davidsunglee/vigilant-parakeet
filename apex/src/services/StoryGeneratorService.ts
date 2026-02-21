@@ -38,17 +38,14 @@ export class StoryGeneratorService {
         const aspects = [
             'Scientific Classification',
             'Natural Habitat',
-            'Hunting & Diet',
-            'Meet the Competitors',
             'Size & Weight',
-            'Speed & Agility',
+            'Hunting & Diet',
+            'Social Behavior',
+            'Senses: Sight, Hearing & Smell',
             'Weapons & Offense',
             'Defenses & Armor',
-            'Senses: Sight & Hearing',
-            'Senses: Smell',
+            'Speed & Agility',
             'Intelligence & Anatomy',
-            'Stamina & Endurance',
-            'Social Behavior',
             'Secret Weapons',
             'Overall Threat Level'
         ];
@@ -62,7 +59,7 @@ export class StoryGeneratorService {
         const rawPages = [];
 
         // Combine aspects into page pairs
-        for (let i = 0; i < 15; i++) {
+        for (let i = 0; i < 12; i++) {
             const aspectA = aspectsA[i];
             const aspectB = aspectsB[i];
 
