@@ -53,7 +53,15 @@ export class LlmService {
         const client = ensureAi();
         const response = await client.models.generateContent({
             model: 'gemini-2.0-flash',
-            contents: `Write an engaging, educational children's book page (about 2-3 sentences max) for each of the provided aspects for the animal: ${animal.commonName}. Provide a highly descriptive visual prompt for an image for the page. Generate exactly one array item for each aspect provided, strictly in the same order. Aspects: \n\n${aspects.join('\n')}`,
+            contents: `Write an engaging, educational children's book page (about 2-3 sentences max) for each of the provided aspects for the animal: ${animal.commonName}. Provide a highly descriptive visual prompt for an image for the page.
+
+Fun fact rules:
+- Include a fun fact on AT MOST 3 out of the ${aspects.length} pages — pick only the most genuinely surprising and fascinating facts.
+- Each fun fact must be a single sentence, different from the main body text, and relevant to that page's specific aspect.
+- Spread the fun facts out: place them across early, middle, and late aspects (not clustered together).
+- If fewer than 3 facts are truly interesting, include fewer. Do not force any.
+
+Generate exactly one array item for each aspect provided, strictly in the same order. Aspects: \n\n${aspects.join('\n')}`,
             config: {
                 responseMimeType: 'application/json',
                 responseSchema: {
@@ -64,7 +72,8 @@ export class LlmService {
                         properties: {
                             aspectName: { type: Type.STRING },
                             bodyText: { type: Type.STRING },
-                            visualPrompt: { type: Type.STRING }
+                            visualPrompt: { type: Type.STRING },
+                            funFact: { type: Type.STRING, description: "Optional: a short, surprising fun fact different from bodyText. Omit if nothing genuinely interesting." }
                         },
                         required: ["aspectName", "bodyText", "visualPrompt"]
                     }
@@ -72,7 +81,7 @@ export class LlmService {
             }
         });
 
-        return JSON.parse(response.text as string) as Array<{ aspectName: string, bodyText: string, visualPrompt: string }>;
+        return JSON.parse(response.text as string) as Array<{ aspectName: string, bodyText: string, visualPrompt: string, funFact?: string }>;
     }
 
     static async getShowdownAndOutcome(
