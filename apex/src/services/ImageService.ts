@@ -12,23 +12,33 @@ export class ImageService {
     static async generateImage(prompt: string): Promise<string> {
         const client = ensureAi();
         try {
-            const response = await client.models.generateImages({
-                model: 'imagen-3.0-generate-001',
-                prompt: prompt,
+            const response = await client.models.generateContent({
+                model: 'gemini-2.5-flash-image',
+                contents: `Generate an illustration in a children's educational book style: ${prompt}`,
                 config: {
-                    numberOfImages: 1,
-                    outputMimeType: 'image/jpeg',
-                    aspectRatio: '3:4'
+                    responseModalities: ['IMAGE'],
                 }
             });
 
-            if (response.generatedImages && response.generatedImages.length > 0) {
-                // @ts-expect-error
-                return `data:image/jpeg;base64,${response.generatedImages[0].image.imageBytes}`;
+            // Extract image data from the response parts
+            if (response.candidates && response.candidates.length > 0) {
+                const parts = response.candidates[0].content?.parts;
+                if (parts) {
+                    for (const part of parts) {
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        const p = part as any;
+                        if (p.inlineData && p.inlineData.data) {
+                            const mimeType = p.inlineData.mimeType || 'image/png';
+                            return `data:${mimeType};base64,${p.inlineData.data}`;
+                        }
+                    }
+                }
             }
+            console.warn("[ImageService] No image in response for:", prompt.substring(0, 60));
         } catch (error) {
-            console.error("Image generation failed:", error);
+            console.error("[ImageService] Generation failed:", error);
         }
         return '';
     }
 }
+
