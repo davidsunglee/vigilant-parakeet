@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { IStoryManifest, IBattleOutcome, IAnimalEntity } from '../types/story.types';
+import { IStoryManifest, IBattleOutcome, IAnimalEntity, IPageContent } from '../types/story.types';
 import { LlmService } from './LlmService';
 import { ImageService } from './ImageService';
 
@@ -100,7 +100,7 @@ export class StoryGeneratorService {
         });
 
         // 5. Generate Images Concurrently (Chunked to prevent ratelimits)
-        const chunkedImageGen = async (pages: any[], chunkSize: number = 4) => {
+        const chunkedImageGen = async (pages: IPageContent[], chunkSize: number = 4) => {
             const results = [];
             for (let i = 0; i < pages.length; i += chunkSize) {
                 const chunk = pages.slice(i, i + chunkSize);
