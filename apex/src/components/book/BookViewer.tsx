@@ -104,11 +104,10 @@ export const BookViewer: React.FC<{ storyId: string; onClose: () => void }> = ({
                                         <div className="text-content" style={{ flex: '1 1 50%' }}>
                                             <p>{page.bodyText}</p>
 
-                                            {/* Inject some informational text features for early pages */}
-                                            {page.index <= 10 && (
+                                            {page.funFact && (
                                                 <div className="fun-fact-box">
                                                     <h4><Info size={16} /> Fun Fact</h4>
-                                                    <p>The {page.isLeftPage ? story.animalA.commonName : story.animalB.commonName} belongs to the habitat of the {page.isLeftPage ? story.animalA.habitat : story.animalB.habitat}.</p>
+                                                    <p>{page.funFact}</p>
                                                 </div>
                                             )}
                                         </div>

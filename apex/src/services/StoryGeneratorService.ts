@@ -68,6 +68,7 @@ export class StoryGeneratorService {
                 title: aspectA.aspectName,
                 bodyText: aspectA.bodyText,
                 visualPrompt: aspectA.visualPrompt,
+                funFact: aspectA.funFact,
                 isLeftPage: true
             });
 
@@ -76,6 +77,7 @@ export class StoryGeneratorService {
                 title: '', // Right page inherits title visually or remains blank
                 bodyText: aspectB.bodyText,
                 visualPrompt: aspectB.visualPrompt,
+                funFact: aspectB.funFact,
                 isLeftPage: false
             });
         }

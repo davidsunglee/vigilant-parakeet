@@ -21,6 +21,7 @@ export interface IPageContent {
   readonly bodyText: string;
   readonly visualPrompt: string; // Prompt used for the left/right illustration
   readonly imageUrl?: string;    // Base64 or URL for the generated image
+  readonly funFact?: string;     // Optional LLM-generated fun fact
   readonly isLeftPage: boolean;
 }
 
