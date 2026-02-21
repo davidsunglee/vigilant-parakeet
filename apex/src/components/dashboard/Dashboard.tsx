@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { BookOpen, Search, Sparkles, Trash2, Trophy } from 'lucide-react';
+import React, { useEffect, useState, useCallback } from 'react';
+import { BookOpen, Search, Sparkles, Trash2, Trophy, Loader, Eye } from 'lucide-react';
 import { IStoryManifest } from '../../types/story.types';
 import { StorageService } from '../../services/StorageService';
 import { StoryGeneratorService } from '../../services/StoryGeneratorService';
@@ -9,6 +9,41 @@ export const Dashboard: React.FC<{ onReadStory: (id: string) => void }> = ({ onR
     const [animalA, setAnimalA] = useState('');
     const [animalB, setAnimalB] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
+    const [generationStep, setGenerationStep] = useState(0);
+    const [revealedWinners, setRevealedWinners] = useState<Set<string>>(new Set());
+
+    const toggleWinnerReveal = (id: string) => {
+        setRevealedWinners(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
+
+    const generationMessages = [
+        { emoji: '🔬', text: 'Researching animal profiles...' },
+        { emoji: '📊', text: 'Analyzing biological stats...' },
+        { emoji: '🧠', text: 'Comparing intelligence levels...' },
+        { emoji: '⚔️', text: 'Simulating the showdown...' },
+        { emoji: '🎨', text: 'Illustrating the pages...' },
+        { emoji: '🖼️', text: 'Generating cover art...' },
+        { emoji: '✍️', text: 'Writing the narrative...' },
+        { emoji: '📖', text: 'Binding the book...' },
+    ];
+
+    const cycleGenerationStep = useCallback(() => {
+        setGenerationStep(prev => (prev + 1) % generationMessages.length);
+    }, [generationMessages.length]);
+
+    useEffect(() => {
+        if (!isGenerating) {
+            setGenerationStep(0);
+            return;
+        }
+        const interval = setInterval(cycleGenerationStep, 3500);
+        return () => clearInterval(interval);
+    }, [isGenerating, cycleGenerationStep]);
 
     // Example animal list for simple auto-complete/search proxy
     const commonAnimals = ['Lion', 'Tiger', 'Polar Bear', 'Grizzly Bear', 'Great White Shark', 'Killer Whale', 'Komodo Dragon', 'King Cobra', 'Hippopotamus', 'Rhinoceros', 'Tarantula', 'Scorpion', 'T-Rex', 'Velociraptor'];
@@ -99,6 +134,28 @@ export const Dashboard: React.FC<{ onReadStory: (id: string) => void }> = ({ onR
                 </datalist>
             </div>
 
+            {isGenerating && (
+                <div className="generation-overlay">
+                    <div className="generation-modal">
+                        <div className="generation-spinner">
+                            <Loader className="spin-icon" size={48} />
+                        </div>
+                        <h3 className="generation-title">Creating Your Book</h3>
+                        <p className="generation-versus">
+                            {animalA || '???'} <span>vs</span> {animalB || '???'}
+                        </p>
+                        <div className="generation-status">
+                            <span className="generation-emoji">{generationMessages[generationStep].emoji}</span>
+                            <span className="generation-message">{generationMessages[generationStep].text}</span>
+                        </div>
+                        <div className="generation-progress-track">
+                            <div className="generation-progress-bar" />
+                        </div>
+                        <p className="generation-hint">This may take a minute — we're generating AI illustrations for every page!</p>
+                    </div>
+                </div>
+            )}
+
             <div className="stories-section">
                 <h2>Your Library ({stories.length})</h2>
                 {stories.length === 0 ? (
@@ -112,18 +169,30 @@ export const Dashboard: React.FC<{ onReadStory: (id: string) => void }> = ({ onR
                             <div key={story.metadata.id} className="story-card">
                                 <div className="story-card-inner">
                                     <div className="custom-cover">
-                                        <h3>{story.animalA.commonName}</h3>
-                                        <span className="cover-vs">VS</span>
-                                        <h3>{story.animalB.commonName}</h3>
+                                        {story.coverImageUrl ? (
+                                            <img src={story.coverImageUrl} alt={`${story.animalA.commonName} vs ${story.animalB.commonName}`} className="cover-image" />
+                                        ) : null}
+                                        <div className="cover-overlay">
+                                            <h3>{story.animalA.commonName}</h3>
+                                            <span className="cover-vs">VS</span>
+                                            <h3>{story.animalB.commonName}</h3>
+                                        </div>
                                     </div>
                                     <div className="story-info">
                                         <h4>{story.metadata.title}</h4>
                                         <p className="date">{new Date(story.metadata.createdAt).toLocaleDateString()}</p>
 
-                                        {story.metadata.hasBeenRead && (
+                                        {revealedWinners.has(story.metadata.id) ? (
                                             <div className="winner-badge">
                                                 <Trophy size={14} /> Winner: {story.outcome.winnerId === 'none' ? 'None (Surprise!)' : (story.outcome.winnerId === 'animalA' ? story.animalA.commonName : story.animalB.commonName)}
                                             </div>
+                                        ) : (
+                                            <button
+                                                className="reveal-winner-btn"
+                                                onClick={(e) => { e.stopPropagation(); toggleWinnerReveal(story.metadata.id); }}
+                                            >
+                                                <Eye size={14} /> Reveal Winner
+                                            </button>
                                         )}
                                     </div>
                                     <div className="card-actions">

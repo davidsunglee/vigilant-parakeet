@@ -52,6 +52,7 @@ export interface IStoryManifest {
   readonly metadata: IStoryMetadata;
   readonly animalA: IAnimalEntity;
   readonly animalB: IAnimalEntity;
+  readonly coverImageUrl?: string;  // AI-generated cover image
   readonly pages: IPageContent[]; // Fixed length array (32 pages ideally)
   readonly checklist: ITraitChecklist;
   readonly outcome: IBattleOutcome;

@@ -70,6 +70,10 @@ export const BookViewer: React.FC<{ storyId: string; onClose: () => void }> = ({
                     >
                         {/* Front Cover */}
                         <div className="page page-cover">
+                            {story.coverImageUrl && (
+                                <img src={story.coverImageUrl} alt="Cover" className="book-cover-image" />
+                            )}
+                            <div className="book-cover-overlay" />
                             <div className="page-content">
                                 <h2>Who Would Win?</h2>
                                 <div className="cover-combatants">
