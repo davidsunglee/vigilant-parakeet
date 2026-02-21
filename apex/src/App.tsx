@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Dashboard } from './components/dashboard/Dashboard';
-import { BookViewer } from './components/book/BookViewer';
+import { BookViewer } from './components/book/BookViewer.tsx';
 
 function App() {
   const [currentStoryId, setCurrentStoryId] = useState<string | null>(null);
