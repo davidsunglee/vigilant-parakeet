@@ -36,14 +36,14 @@ export class StoryGeneratorService {
         };
 
         const aspects = [
-            'Meet the Competitors',
             'Scientific Classification',
+            'Natural Habitat',
+            'Hunting & Diet',
+            'Meet the Competitors',
             'Size & Weight',
             'Speed & Agility',
             'Weapons & Offense',
             'Defenses & Armor',
-            'Natural Habitat',
-            'Hunting & Diet',
             'Senses: Sight & Hearing',
             'Senses: Smell',
             'Intelligence & Anatomy',
@@ -117,6 +117,11 @@ export class StoryGeneratorService {
 
         const finalPages = await chunkedImageGen(rawPages, 4);
 
+        // 6. Generate Cover Image
+        console.log('Generating cover image...');
+        const coverPrompt = `A dramatic, dynamic children's book cover illustration showing a ${animalAQuery} and a ${animalBQuery} facing each other in an epic standoff. The scene should be intense and exciting, with both animals looking powerful and ready for battle. Bold, vibrant colors with an action-packed composition. No text in the image.`;
+        const coverImageUrl = await ImageService.generateImage(coverPrompt);
+
         const manifest: IStoryManifest = {
             metadata: {
                 id: uuidv4(),
@@ -126,6 +131,7 @@ export class StoryGeneratorService {
             },
             animalA,
             animalB,
+            coverImageUrl,
             checklist: outcomeData.checklist,
             outcome,
             pages: finalPages
