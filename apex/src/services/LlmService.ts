@@ -13,7 +13,7 @@ export class LlmService {
     static async getAnimalProfile(animalName: string): Promise<Omit<IAnimalEntity, 'id' | 'commonName'>> {
         const client = ensureAi();
         const response = await client.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-3-flash-preview',
             contents: `Provide biological stats and habitat for the animal: ${animalName}`,
             config: {
                 responseMimeType: "application/json",
@@ -52,7 +52,7 @@ export class LlmService {
     static async getAspectsForAnimal(animal: IAnimalEntity, aspects: string[]) {
         const client = ensureAi();
         const response = await client.models.generateContent({
-            model: 'gemini-2.0-flash',
+            model: 'gemini-3-flash-preview',
             contents: `Write an engaging, educational children's book page (about 2-3 sentences max) for each of the provided aspects for the animal: ${animal.commonName}. Provide a highly descriptive visual prompt for an image for the page.
 
 Fun fact rules:
@@ -103,7 +103,7 @@ Is it a surprise ending? ${isSurpriseEnding}. If yes, the ending type is: ${endi
 Provide the checklist advantages, the logical reasoning, and then provide the body text and visual prompt for the "Showdown" page (right before the fight) and the "Outcome" page (the result of the fight). Keep body texts engaging for children (2-3 sentences max).`;
 
         const response = await client.models.generateContent({
-            model: 'gemini-2.0-flash',
+            model: 'gemini-3-flash-preview',
             contents: prompt,
             config: {
                 responseMimeType: 'application/json',
