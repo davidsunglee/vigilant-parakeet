@@ -604,3 +604,48 @@ button {
   opacity: 0.6;
   line-height: 1.5;
 }
+
+/* ===================== Mobile Responsiveness ===================== */
+@media (max-width: 768px) {
+
+  /* Dashboard Header adjustments */
+  .dashboard-header h1 {
+    font-size: 2.2rem;
+  }
+
+  .dashboard-header p {
+    font-size: 1rem;
+  }
+
+  /* Form layout shifting to column */
+  .generator-form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .input-group {
+    max-width: 100%;
+  }
+
+  .vs-badge {
+    align-self: center;
+    margin: 10px 0;
+    width: 44px;
+    height: 44px;
+    font-size: 1rem;
+  }
+
+  .generate-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Modal scaling */
+  .generation-modal {
+    padding: 30px 20px;
+  }
+
+  .generation-title {
+    font-size: 1.3rem;
+  }
+}
