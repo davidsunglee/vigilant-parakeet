@@ -106,8 +106,15 @@ export const BookViewer: React.FC<{ storyId: string; onClose: () => void }> = ({
 
                                             {page.funFact && (
                                                 <div className="fun-fact-box">
-                                                    <h4><Info size={16} /> Fun Fact</h4>
-                                                    <p>{page.funFact}</p>
+                                                    <h4>
+                                                        <div className="fun-fact-icon-wrapper">
+                                                            <Info size={18} />
+                                                            <div className="fun-fact-tooltip">
+                                                                {page.funFact}
+                                                            </div>
+                                                        </div>
+                                                        Fun Fact
+                                                    </h4>
                                                 </div>
                                             )}
                                         </div>
