@@ -183,9 +183,12 @@ export const Dashboard: React.FC<{ onReadStory: (id: string) => void }> = ({ onR
                                         <p className="date">{new Date(story.metadata.createdAt).toLocaleDateString()}</p>
 
                                         {revealedWinners.has(story.metadata.id) ? (
-                                            <div className="winner-badge">
+                                            <button
+                                                className="winner-badge"
+                                                onClick={(e) => { e.stopPropagation(); toggleWinnerReveal(story.metadata.id); }}
+                                            >
                                                 <Trophy size={14} /> Winner: {story.outcome.winnerId === 'none' ? 'None (Surprise!)' : (story.outcome.winnerId === 'animalA' ? story.animalA.commonName : story.animalB.commonName)}
-                                            </div>
+                                            </button>
                                         ) : (
                                             <button
                                                 className="reveal-winner-btn"
