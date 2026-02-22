@@ -321,6 +321,12 @@ button {
   font-size: 0.85rem;
   font-weight: 700;
   animation: revealFade 0.3s ease;
+  transition: var(--transition);
+}
+
+.winner-badge:hover {
+  background-color: rgba(163, 113, 247, 0.25);
+  transform: translateY(-2px);
 }
 
 @keyframes revealFade {
