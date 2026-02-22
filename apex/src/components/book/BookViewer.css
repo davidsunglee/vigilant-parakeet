@@ -318,3 +318,73 @@
     border-radius: 12px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
+
+/* ===================== Mobile Responsiveness ===================== */
+@media (max-width: 768px) {
+    .book-toolbar {
+        padding: 10px 15px;
+    }
+
+    .book-title {
+        font-size: 1rem;
+        max-width: 150px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .close-book-btn {
+        padding: 6px 10px;
+        font-size: 0.9rem;
+    }
+
+    .book-canvas-area {
+        padding: 10px 0;
+    }
+
+    .nav-arrow {
+        width: 44px;
+        height: 44px;
+    }
+
+    .nav-arrow.left {
+        left: 10px;
+    }
+
+    .nav-arrow.right {
+        right: 10px;
+    }
+
+    .page-content {
+        padding: 20px 15px;
+    }
+
+    .page-title {
+        font-size: 1.3rem;
+        margin-bottom: 12px;
+    }
+
+    .text-content p {
+        font-size: 0.95rem;
+        margin-bottom: 10px;
+    }
+
+    .page-cover h2 {
+        font-size: 1.8rem;
+        margin-bottom: 20px;
+    }
+
+    .cover-combatants h3 {
+        font-size: 1.4rem;
+    }
+
+    .cover-combatants span {
+        font-size: 1.1rem;
+    }
+
+    .checklist-header,
+    .checklist-row {
+        font-size: 0.85rem;
+        padding: 8px 5px;
+    }
+}
