@@ -21,15 +21,11 @@ Three coordinated changes:
 
 ### CSS Changes (`BookViewer.css`)
 
-**Remove from `.generated-image`:**
-- `height: 100%`
-- `max-height: 400px`
-- `object-fit: cover`
-
-**Add to `.generated-image`:**
-- `width: 100%`
-- `height: auto`
-- `object-fit: contain`
+**Change `.generated-image`:**
+- Change `height: 100%` → `height: auto`
+- Remove `max-height: 400px`
+- Change `object-fit: cover` → `object-fit: contain`
+- Keep existing `width: 100%`, `border-radius`, `box-shadow`
 
 **Change `.visual-content`:**
 - From: `flex: 1` (in CSS) plus inline `flex: 1 1 50%`
@@ -100,6 +96,20 @@ export interface AiConfig {
 
 ### Frontend Service (`apex/src/services/ImageService.ts`)
 
+**Signature change:**
+
+```typescript
+// Before
+static async generateImage(config: AiConfig, prompt: string): Promise<string>
+
+// After — add optional options parameter
+static async generateImage(
+  config: AiConfig,
+  prompt: string,
+  options?: { aspectRatio?: string; resolution?: string }
+): Promise<string>
+```
+
 Pass the new fields in the fetch body:
 
 ```typescript
@@ -107,22 +117,55 @@ body: JSON.stringify({
   provider: config.imageProvider,
   model: config.imageModel,
   prompt: styledPrompt,
-  aspectRatio,
-  resolution,
+  ...(options?.aspectRatio && { aspectRatio: options.aspectRatio }),
+  ...(options?.resolution && { resolution: options.resolution }),
 })
 ```
+
+The aspect ratio and resolution fields are always passed through when provided. The server-side adapter's `request.aspectRatio &&` guard handles the conditional `imageConfig` — no model-checking logic needed on the frontend.
 
 ### Story Generator (`apex/src/services/StoryGeneratorService.ts`)
 
 Pass aspect ratio when calling `ImageService.generateImage()`:
-- Page illustrations: `aspectRatio: "4:3"` (landscape, fills page width nicely)
-- Cover image: `aspectRatio: "3:2"` (the cover uses `object-fit: cover` as a background, so a wider ratio works well)
+- Page illustrations: `ImageService.generateImage(config, p.visualPrompt, { aspectRatio: '4:3' })` (landscape, fills page width nicely)
+- Cover image: `ImageService.generateImage(config, coverPrompt, { aspectRatio: '3:2' })` (the cover uses `object-fit: cover` as a background, so a wider ratio works well)
 
-These are only sent when the selected model supports `imageConfig` (i.e., `gemini-3.1-flash-image-preview`). For `gemini-2.5-flash-image`, the fields are omitted.
+Note: the cover prompt is passed directly through `ImageService.generateImage()`, which applies the style prefix and also passes aspect ratio to the server. Both the prompt improvements (Section 3) and the aspect ratio parameter apply to the cover.
+
+The `resolution` field is pass-through plumbing for future use. It is not set anywhere in this iteration.
+
+### Conditional Aspect Ratio Strategy
+
+Aspect ratio fields are always sent from the frontend to the server, regardless of model. The server-side `GeminiImageAdapter` conditionally includes `imageConfig` only when `request.aspectRatio` is present (via the `request.aspectRatio &&` guard). When using `gemini-2.5-flash-image`, the Gemini API ignores unsupported config fields — but as an extra safety measure, the adapter only sends `imageConfig` when the field is present. There is no model-checking logic on the frontend.
 
 ### Dashboard UI
 
-Add an image model dropdown to the Dashboard, mirroring the existing LLM model pattern. Available options: `gemini-2.5-flash-image` and `gemini-3.1-flash-image-preview`.
+Add an image model `<select>` dropdown to the Dashboard, placed next to the existing LLM provider dropdown. The image model list is **hardcoded in the frontend** since both models use the same Gemini provider and API key — there is no need for a backend discovery endpoint.
+
+The dropdown:
+- Always visible (not conditional on provider count, since both options are always available)
+- Options: `gemini-2.5-flash-image` (display: "Gemini 2.5 Flash"), `gemini-3.1-flash-image-preview` (display: "Gemini 3.1 Flash")
+- Default: `gemini-2.5-flash-image` (safe default, the model we know works)
+- Bound to `config.imageModel` via `setConfig`
+- Disabled during generation (same as existing LLM dropdown)
+- Uses existing `.provider-selector` CSS class
+
+Implementation follows the existing LLM provider pattern at Dashboard.tsx lines 104–118:
+
+```tsx
+<div className="provider-selector">
+    <label htmlFor="image-model">Image Model:</label>
+    <select
+        id="image-model"
+        value={config.imageModel ?? 'gemini-2.5-flash-image'}
+        onChange={(e) => setConfig({ ...config, imageModel: e.target.value })}
+        disabled={isGenerating}
+    >
+        <option value="gemini-2.5-flash-image">Gemini 2.5 Flash</option>
+        <option value="gemini-3.1-flash-image-preview">Gemini 3.1 Flash</option>
+    </select>
+</div>
+```
 
 ## Section 3: Prompt Improvements
 
