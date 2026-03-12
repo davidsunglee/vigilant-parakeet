@@ -108,7 +108,7 @@ export class StoryGeneratorService {
                 const chunk = pages.slice(i, i + chunkSize);
                 console.log(`Generating images for chunk ${i / chunkSize + 1}`);
                 const chunkResults = await Promise.all(chunk.map(async p => {
-                    const imageUrl = await ImageService.generateImage(config, p.visualPrompt);
+                    const imageUrl = await ImageService.generateImage(config, p.visualPrompt, { aspectRatio: '4:3' });
                     return { ...p, imageUrl };
                 }));
                 results.push(...chunkResults);
@@ -120,8 +120,8 @@ export class StoryGeneratorService {
 
         // 6. Generate Cover Image
         console.log('Generating cover image...');
-        const coverPrompt = `A dramatic, dynamic children's book cover illustration showing a ${animalAQuery} and a ${animalBQuery} facing each other in an epic standoff. The scene should be intense and exciting, with both animals looking powerful and ready for battle. Bold, vibrant colors with an action-packed composition. No text in the image.`;
-        const coverImageUrl = await ImageService.generateImage(config, coverPrompt);
+        const coverPrompt = `A dramatic, dynamic children's book cover illustration showing a ${animalAQuery} and a ${animalBQuery} facing each other in an epic standoff. Both animals must be fully visible from head to tail. The scene should be intense and exciting, with both animals looking powerful and ready for battle. Bold, vibrant colors with an action-packed composition. No text in the image.`;
+        const coverImageUrl = await ImageService.generateImage(config, coverPrompt, { aspectRatio: '3:2' });
 
         const manifest: IStoryManifest = {
             metadata: {

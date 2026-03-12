@@ -4,6 +4,7 @@ export interface AiConfig {
   llmProvider: string;
   llmModel?: string;
   imageProvider: string;
+  imageModel?: string;
 }
 
 interface AiConfigContextValue {
