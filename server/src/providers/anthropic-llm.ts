@@ -15,6 +15,13 @@ export class AnthropicLlmAdapter implements ILlmProvider {
   async generate(request: LlmRequest): Promise<LlmResponse> {
     const model = request.model ?? DEFAULT_MODEL;
 
+    // Anthropic requires input_schema to be type: 'object' at root.
+    // Wrap non-object schemas (e.g. arrays) in an object envelope.
+    const needsWrapping = request.responseSchema.type !== 'object';
+    const inputSchema = needsWrapping
+      ? { type: 'object', properties: { result: request.responseSchema }, required: ['result'] }
+      : request.responseSchema;
+
     const response = await this.client.messages.create({
       model,
       max_tokens: 4096,
@@ -29,7 +36,7 @@ export class AnthropicLlmAdapter implements ILlmProvider {
         {
           name: TOOL_NAME,
           description: 'Return structured data matching the required schema.',
-          input_schema: request.responseSchema as Anthropic.Tool.InputSchema,
+          input_schema: inputSchema as Anthropic.Tool.InputSchema,
         },
       ],
       tool_choice: { type: 'tool', name: TOOL_NAME },
@@ -43,6 +50,8 @@ export class AnthropicLlmAdapter implements ILlmProvider {
       throw new Error('Anthropic response did not contain a tool_use block');
     }
 
-    return { data: toolBlock.input as Record<string, unknown> };
+    const input = toolBlock.input as Record<string, unknown>;
+    // Unwrap the envelope if we wrapped the schema
+    return { data: needsWrapping ? (input.result as Record<string, unknown>) : input };
   }
 }

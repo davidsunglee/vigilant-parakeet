@@ -33,7 +33,15 @@ export function AiConfigProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     fetch('/api/providers')
       .then((res) => res.json())
-      .then((data) => setAvailableProviders(data))
+      .then((data) => {
+        setAvailableProviders(data);
+        // Update config to use first available provider if current default isn't available
+        setConfig((prev) => ({
+          ...prev,
+          llmProvider: data.llm?.includes(prev.llmProvider) ? prev.llmProvider : (data.llm?.[0] ?? prev.llmProvider),
+          imageProvider: data.image?.includes(prev.imageProvider) ? prev.imageProvider : (data.image?.[0] ?? prev.imageProvider),
+        }));
+      })
       .catch((err) => console.error('Failed to fetch providers:', err));
   }, []);
 
