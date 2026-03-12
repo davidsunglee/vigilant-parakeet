@@ -3,6 +3,7 @@ import { BookOpen, Search, Sparkles, Trash2, Trophy, Loader, Eye } from 'lucide-
 import { IStoryManifest } from '../../types/story.types';
 import { StorageService } from '../../services/StorageService';
 import { StoryGeneratorService } from '../../services/StoryGeneratorService';
+import { useAiConfig } from '../../contexts/AiConfigContext';
 
 export const Dashboard: React.FC<{ onReadStory: (id: string) => void }> = ({ onReadStory }) => {
     const [stories, setStories] = useState<IStoryManifest[]>([]);
@@ -11,6 +12,7 @@ export const Dashboard: React.FC<{ onReadStory: (id: string) => void }> = ({ onR
     const [isGenerating, setIsGenerating] = useState(false);
     const [generationStep, setGenerationStep] = useState(0);
     const [revealedWinners, setRevealedWinners] = useState<Set<string>>(new Set());
+    const { config, setConfig, availableProviders } = useAiConfig();
 
     const toggleWinnerReveal = (id: string) => {
         setRevealedWinners(prev => {
@@ -63,7 +65,7 @@ export const Dashboard: React.FC<{ onReadStory: (id: string) => void }> = ({ onR
 
         setIsGenerating(true);
         try {
-            const newStory = await StoryGeneratorService.generateStory(animalA.trim(), animalB.trim());
+            const newStory = await StoryGeneratorService.generateStory(config, animalA.trim(), animalB.trim());
             await StorageService.saveStory(newStory);
             setAnimalA('');
             setAnimalB('');
@@ -99,6 +101,21 @@ export const Dashboard: React.FC<{ onReadStory: (id: string) => void }> = ({ onR
 
             <div className="generator-section">
                 <h2>Create a New Story</h2>
+                {availableProviders.llm.length > 1 && (
+                    <div className="provider-selector">
+                        <label htmlFor="llm-provider">AI Model:</label>
+                        <select
+                            id="llm-provider"
+                            value={config.llmProvider}
+                            onChange={(e) => setConfig({ ...config, llmProvider: e.target.value })}
+                            disabled={isGenerating}
+                        >
+                            {availableProviders.llm.map((p) => (
+                                <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>
+                            ))}
+                        </select>
+                    </div>
+                )}
                 <form onSubmit={handleGenerate} className="generator-form">
                     <div className="input-group">
                         <Search className="input-icon" size={20} />
