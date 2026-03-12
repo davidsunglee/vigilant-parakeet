@@ -35,7 +35,7 @@ vigilant-parakeet/
 │       └── services/
 │           ├── LlmService.ts          # REWRITTEN: fetch() to proxy
 │           ├── ImageService.ts         # REWRITTEN: fetch() to proxy
-│           ├── StoryGeneratorService.ts  # UNCHANGED
+│           ├── StoryGeneratorService.ts  # MINOR CHANGE: adds config param passthrough
 │           └── StorageService.ts         # UNCHANGED
 │
 └── server/                            # NEW: Elysia + Bun proxy
@@ -65,6 +65,7 @@ vigilant-parakeet/
 interface LlmRequest {
   prompt: string;
   systemPrompt?: string;
+  model?: string;               // Optional model override; adapter uses its default if omitted
   responseSchema: JsonSchema;   // Standard JSON Schema (provider-neutral)
 }
 
@@ -90,6 +91,8 @@ interface IImageProvider {
 ```
 
 **Schema translation:** Each adapter converts standard JSON Schema to its provider's native format. GeminiLlmAdapter maps to Google's `Type.*` enum schema. AnthropicLlmAdapter uses the tool_use pattern — defines a tool whose `input_schema` is the JSON Schema, instructs the model to call it, and extracts the tool call arguments as parsed JSON.
+
+**Route vs. adapter responsibility:** The route handler extracts `provider` from the HTTP request body, looks up the adapter in the registry, and passes the remaining fields (`prompt`, `systemPrompt`, `model`, `responseSchema`) as an `LlmRequest` (or `ImageRequest`) to the adapter's `generate()` method. The adapter never knows about routing — it only sees its typed request object.
 
 ## Provider Registry
 
@@ -137,6 +140,8 @@ Adapters are only registered if their corresponding API key is present in the en
   "code": "UNKNOWN_PROVIDER" | "GENERATION_FAILED" | "MISSING_API_KEY"
 }
 ```
+
+**HTTP status codes:** `UNKNOWN_PROVIDER` → 400, `MISSING_API_KEY` → 503, `GENERATION_FAILED` → 502. Request validation failures (missing required fields) → 422.
 
 ### `POST /api/image/generate`
 
@@ -197,20 +202,30 @@ The UI settings dropdown only shows providers returned by this endpoint.
 
 ## Frontend Changes
 
+### Config passing pattern
+
+The current `LlmService` and `ImageService` are static classes. React context cannot be consumed from static methods. To bridge this:
+
+1. `LlmService` and `ImageService` methods gain an `AiConfig` parameter (first arg):
+   - `LlmService.getAnimalProfile(config: AiConfig, animalName: string)`
+   - `ImageService.generateImage(config: AiConfig, prompt: string)`
+2. `StoryGeneratorService.generateStory()` also gains an `AiConfig` parameter and threads it through to all service calls. This is a **minor signature change** — the orchestration logic is unchanged.
+3. The Dashboard component reads `AiConfig` from `AiConfigContext` via `useContext()` and passes it into `StoryGeneratorService.generateStory(config, animalA, animalB)`.
+
+This keeps services as plain static classes (no hooks, no singletons) and confines React-awareness to the component layer.
+
 ### LlmService.ts (rewrite)
 
 - Remove `@google/genai` import and SDK initialization
-- Each method keeps its current signature and return types
-- Internally constructs `fetch("/api/llm/generate", ...)` calls
-- Response schemas rewritten from Google `Type.*` enums to standard JSON Schema objects
-- Provider and model read from `AiConfigContext`
+- Each method gains `config: AiConfig` as its first parameter; return types unchanged
+- Internally constructs `fetch("/api/llm/generate", ...)` calls with `config.llmProvider` and `config.llmModel`
+- Response schemas rewritten from Google `Type.*` enums to standard JSON Schema objects (see Schema Translation Example below)
 
 ### ImageService.ts (rewrite)
 
 - Remove `@google/genai` import and SDK initialization
-- `generateImage()` becomes `fetch("/api/image/generate", ...)`
+- `generateImage(config: AiConfig, prompt: string)` becomes a `fetch("/api/image/generate", ...)` call with `config.imageProvider`
 - The children's book style prefix remains here (frontend owns prompt content)
-- Provider read from `AiConfigContext`
 
 ### AiConfigContext (new)
 
@@ -234,9 +249,12 @@ A React context + provider wrapping the app. A settings control on the Dashboard
 
 ### Unchanged
 
-- `StoryGeneratorService.ts` — calls the same `LlmService` and `ImageService` methods
 - `StorageService.ts`
-- All components, types, styles
+- All components (except Dashboard wiring the config), types, styles
+
+### Impact on StoryGeneratorService
+
+`StoryGeneratorService.generateStory()` gains `config: AiConfig` as its first parameter and passes it through to `LlmService` and `ImageService` calls. No other logic changes — the orchestration pipeline (profiles → outcome → aspects → images → manifest) is identical.
 
 ## Dev Experience
 
@@ -271,6 +289,54 @@ ANTHROPIC_API_KEY=...
 ```
 
 No `VITE_` prefix — keys never touch the browser. The existing `apex/.env` with `VITE_GEMINI_API_KEY` can be removed after migration.
+
+## Schema Translation Example
+
+The current `getAnimalProfile` uses Google's `Type.*` enum format:
+
+```typescript
+// BEFORE (Google format in LlmService.ts)
+responseSchema: {
+  type: Type.OBJECT,
+  properties: {
+    scientificName: { type: Type.STRING },
+    weight: { type: Type.STRING },
+    length: { type: Type.STRING },
+    speed: { type: Type.STRING },
+    weaponry: { type: Type.STRING },
+    armor: { type: Type.STRING },
+    brainSize: { type: Type.STRING },
+    habitat: { type: Type.STRING }
+  },
+  required: ["scientificName", "weight", "length", "speed", "weaponry", "armor", "brainSize", "habitat"]
+}
+```
+
+```typescript
+// AFTER (standard JSON Schema, sent to proxy)
+responseSchema: {
+  type: "object",
+  properties: {
+    scientificName: { type: "string" },
+    weight: { type: "string" },
+    length: { type: "string" },
+    speed: { type: "string" },
+    weaponry: { type: "string" },
+    armor: { type: "string" },
+    brainSize: { type: "string" },
+    habitat: { type: "string" }
+  },
+  required: ["scientificName", "weight", "length", "speed", "weaponry", "armor", "brainSize", "habitat"]
+}
+```
+
+The translation is straightforward for this project's schemas (flat objects, arrays of objects, strings, booleans). The GeminiLlmAdapter maps `"object"` → `Type.OBJECT`, `"string"` → `Type.STRING`, `"array"` → `Type.ARRAY`, `"boolean"` → `Type.BOOLEAN`. The AnthropicLlmAdapter passes JSON Schema directly as the tool's `input_schema` (Anthropic natively supports JSON Schema).
+
+## CORS & Timeouts
+
+**CORS:** In development, the Vite proxy makes CORS irrelevant (same-origin). The Elysia server configures CORS to allow `http://localhost:5173` as a safety net. Production CORS policy depends on deployment topology and is out of scope for this spec.
+
+**Timeouts:** LLM calls can take 10-30s; image generation can be even slower. The proxy does not impose its own timeout — it relies on the upstream provider's timeout behavior. The frontend's existing loading overlay (cycling status messages) already handles long waits gracefully. Retry logic is deferred — not needed for v1.
 
 ## Server Dependencies
 
