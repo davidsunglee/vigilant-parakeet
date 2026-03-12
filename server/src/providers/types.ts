@@ -20,6 +20,9 @@ export interface LlmResponse {
 
 export interface ImageRequest {
   prompt: string;
+  model?: string;
+  aspectRatio?: string;
+  resolution?: string;
 }
 
 export interface ImageResponse {
