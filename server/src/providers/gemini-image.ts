@@ -13,10 +13,16 @@ export class GeminiImageAdapter implements IImageProvider {
 
   async generate(request: ImageRequest): Promise<ImageResponse> {
     const response = await this.client.models.generateContent({
-      model: DEFAULT_MODEL,
+      model: request.model ?? DEFAULT_MODEL,
       contents: request.prompt,
       config: {
         responseModalities: ['IMAGE'],
+        ...(request.aspectRatio && {
+          imageConfig: {
+            aspectRatio: request.aspectRatio,
+            ...(request.resolution && { imageSize: request.resolution }),
+          },
+        }),
       },
     });
 
