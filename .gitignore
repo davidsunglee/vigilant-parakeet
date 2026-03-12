@@ -1,0 +1,9 @@
+# Worktrees
+.worktrees/
+
+# Server
+server/.env
+server/node_modules/
+
+# Playwright CLI
+.playwright-cli/
