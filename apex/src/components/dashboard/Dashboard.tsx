@@ -116,6 +116,18 @@ export const Dashboard: React.FC<{ onReadStory: (id: string) => void }> = ({ onR
                         </select>
                     </div>
                 )}
+                <div className="provider-selector">
+                    <label htmlFor="image-model">Image Model:</label>
+                    <select
+                        id="image-model"
+                        value={config.imageModel ?? 'gemini-2.5-flash-image'}
+                        onChange={(e) => setConfig({ ...config, imageModel: e.target.value })}
+                        disabled={isGenerating}
+                    >
+                        <option value="gemini-2.5-flash-image">Gemini 2.5 Flash</option>
+                        <option value="gemini-3.1-flash-image-preview">Gemini 3.1 Flash</option>
+                    </select>
+                </div>
                 <form onSubmit={handleGenerate} className="generator-form">
                     <div className="input-group">
                         <Search className="input-icon" size={20} />
