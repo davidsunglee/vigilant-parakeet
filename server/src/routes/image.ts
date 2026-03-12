@@ -15,7 +15,12 @@ export const imageRoute = new Elysia()
       }
 
       try {
-        const result = await adapter.generate({ prompt: body.prompt });
+        const result = await adapter.generate({
+          prompt: body.prompt,
+          model: body.model,
+          aspectRatio: body.aspectRatio,
+          resolution: body.resolution,
+        });
         return result;
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Unknown error';
@@ -29,6 +34,9 @@ export const imageRoute = new Elysia()
       body: t.Object({
         provider: t.String(),
         prompt: t.String(),
+        model: t.Optional(t.String()),
+        aspectRatio: t.Optional(t.String()),
+        resolution: t.Optional(t.String()),
       }),
     }
   );
