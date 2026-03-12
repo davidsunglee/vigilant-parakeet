@@ -1,0 +1,5 @@
+# Worktrees
+.worktrees/
+
+# Server secrets
+server/.env
