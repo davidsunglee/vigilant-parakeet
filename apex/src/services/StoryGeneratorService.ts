@@ -1,14 +1,15 @@
 import { v4 as uuidv4 } from 'uuid';
+import type { AiConfig } from '../contexts/AiConfigContext';
 import { IStoryManifest, IBattleOutcome, IAnimalEntity, IPageContent } from '../types/story.types';
 import { LlmService } from './LlmService';
 import { ImageService } from './ImageService';
 
 export class StoryGeneratorService {
-    static async generateStory(animalAQuery: string, animalBQuery: string): Promise<IStoryManifest> {
+    static async generateStory(config: AiConfig, animalAQuery: string, animalBQuery: string): Promise<IStoryManifest> {
         // 1. Fetch Biology Profiles
         const [profileA, profileB] = await Promise.all([
-            LlmService.getAnimalProfile(animalAQuery),
-            LlmService.getAnimalProfile(animalBQuery)
+            LlmService.getAnimalProfile(config, animalAQuery),
+            LlmService.getAnimalProfile(config, animalBQuery)
         ]);
 
         const animalA: IAnimalEntity = { id: 'animalA', commonName: animalAQuery, ...profileA };
@@ -21,6 +22,7 @@ export class StoryGeneratorService {
 
         // 3. Generate Battle Outcome and Checklist from LLM
         const outcomeData = await LlmService.getShowdownAndOutcome(
+            config,
             animalA,
             animalB,
             isSurpriseEnding,
@@ -52,8 +54,8 @@ export class StoryGeneratorService {
 
         // 4. Generate Page Descriptions from LLM
         const [aspectsA, aspectsB] = await Promise.all([
-            LlmService.getAspectsForAnimal(animalA, aspects),
-            LlmService.getAspectsForAnimal(animalB, aspects)
+            LlmService.getAspectsForAnimal(config, animalA, aspects),
+            LlmService.getAspectsForAnimal(config, animalB, aspects)
         ]);
 
         const rawPages = [];
@@ -74,7 +76,7 @@ export class StoryGeneratorService {
 
             rawPages.push({
                 index: i * 2 + 2,
-                title: '', // Right page inherits title visually or remains blank
+                title: '',
                 bodyText: aspectB.bodyText,
                 visualPrompt: aspectB.visualPrompt,
                 funFact: aspectB.funFact,
@@ -106,7 +108,7 @@ export class StoryGeneratorService {
                 const chunk = pages.slice(i, i + chunkSize);
                 console.log(`Generating images for chunk ${i / chunkSize + 1}`);
                 const chunkResults = await Promise.all(chunk.map(async p => {
-                    const imageUrl = await ImageService.generateImage(p.visualPrompt);
+                    const imageUrl = await ImageService.generateImage(config, p.visualPrompt);
                     return { ...p, imageUrl };
                 }));
                 results.push(...chunkResults);
@@ -119,7 +121,7 @@ export class StoryGeneratorService {
         // 6. Generate Cover Image
         console.log('Generating cover image...');
         const coverPrompt = `A dramatic, dynamic children's book cover illustration showing a ${animalAQuery} and a ${animalBQuery} facing each other in an epic standoff. The scene should be intense and exciting, with both animals looking powerful and ready for battle. Bold, vibrant colors with an action-packed composition. No text in the image.`;
-        const coverImageUrl = await ImageService.generateImage(coverPrompt);
+        const coverImageUrl = await ImageService.generateImage(config, coverPrompt);
 
         const manifest: IStoryManifest = {
             metadata: {
