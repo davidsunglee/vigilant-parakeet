@@ -40,4 +40,22 @@ describe('Provider types', () => {
     };
     expect(mock.generate).toBeDefined();
   });
+
+  it('ImageRequest accepts optional model, aspectRatio, and resolution', () => {
+    const req: ImageRequest = {
+      prompt: 'a cat',
+      model: 'gemini-3.1-flash-image-preview',
+      aspectRatio: '4:3',
+      resolution: '1K',
+    };
+    expect(req.prompt).toBe('a cat');
+    expect(req.model).toBe('gemini-3.1-flash-image-preview');
+    expect(req.aspectRatio).toBe('4:3');
+    expect(req.resolution).toBe('1K');
+  });
+
+  it('ImageRequest works with only prompt (all new fields optional)', () => {
+    const req: ImageRequest = { prompt: 'a dog' };
+    expect(req.prompt).toBe('a dog');
+  });
 });
