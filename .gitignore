@@ -1,5 +1,9 @@
 # Worktrees
 .worktrees/
 
-# Server secrets
+# Server
 server/.env
+server/node_modules/
+
+# Playwright CLI
+.playwright-cli/
