@@ -91,7 +91,7 @@ export const BookViewer: React.FC<{ storyId: string; onClose: () => void }> = ({
                                     {page.title && <h3 className="page-title">{page.title}</h3>}
 
                                     <div className="page-media-layout">
-                                        <div className="visual-content" style={{ flex: '1 1 50%', marginBottom: '20px' }}>
+                                        <div className="visual-content">
                                             {page.imageUrl ? (
                                                 <img src={page.imageUrl} alt="Generated Illustration" className="generated-image" />
                                             ) : (
@@ -101,7 +101,7 @@ export const BookViewer: React.FC<{ storyId: string; onClose: () => void }> = ({
                                             )}
                                         </div>
 
-                                        <div className="text-content" style={{ flex: '1 1 50%' }}>
+                                        <div className="text-content">
                                             <p>{page.bodyText}</p>
 
                                             {page.funFact && (
