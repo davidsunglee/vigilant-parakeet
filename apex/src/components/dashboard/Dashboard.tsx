@@ -101,33 +101,6 @@ export const Dashboard: React.FC<{ onReadStory: (id: string) => void }> = ({ onR
 
             <div className="generator-section">
                 <h2>Create a New Story</h2>
-                {availableProviders.llm.length > 1 && (
-                    <div className="provider-selector">
-                        <label htmlFor="llm-provider">AI Model:</label>
-                        <select
-                            id="llm-provider"
-                            value={config.llmProvider}
-                            onChange={(e) => setConfig({ ...config, llmProvider: e.target.value })}
-                            disabled={isGenerating}
-                        >
-                            {availableProviders.llm.map((p) => (
-                                <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>
-                            ))}
-                        </select>
-                    </div>
-                )}
-                <div className="provider-selector">
-                    <label htmlFor="image-model">Image Model:</label>
-                    <select
-                        id="image-model"
-                        value={config.imageModel ?? 'gemini-2.5-flash-image'}
-                        onChange={(e) => setConfig({ ...config, imageModel: e.target.value })}
-                        disabled={isGenerating}
-                    >
-                        <option value="gemini-2.5-flash-image">Gemini 2.5 Flash</option>
-                        <option value="gemini-3.1-flash-image-preview">Gemini 3.1 Flash</option>
-                    </select>
-                </div>
                 <form onSubmit={handleGenerate} className="generator-form">
                     <div className="input-group">
                         <Search className="input-icon" size={20} />
@@ -158,6 +131,38 @@ export const Dashboard: React.FC<{ onReadStory: (id: string) => void }> = ({ onR
                         {isGenerating ? 'Generating Simulation...' : <span><Sparkles size={18} /> Generate Story</span>}
                     </button>
                 </form>
+                <details className="advanced-options">
+                    <summary>Advanced Options</summary>
+                    <div className="advanced-options-content">
+                        {availableProviders.llm.length > 1 && (
+                            <div className="provider-selector">
+                                <label htmlFor="llm-provider">LLM Provider:</label>
+                                <select
+                                    id="llm-provider"
+                                    value={config.llmProvider}
+                                    onChange={(e) => setConfig({ ...config, llmProvider: e.target.value })}
+                                    disabled={isGenerating}
+                                >
+                                    {availableProviders.llm.map((p) => (
+                                        <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
+                        <div className="provider-selector">
+                            <label htmlFor="image-model">Image Model:</label>
+                            <select
+                                id="image-model"
+                                value={config.imageModel ?? 'gemini-3.1-flash-image-preview'}
+                                onChange={(e) => setConfig({ ...config, imageModel: e.target.value })}
+                                disabled={isGenerating}
+                            >
+                                <option value="gemini-3.1-flash-image-preview">Gemini 3.1 Flash</option>
+                                <option value="gemini-2.5-flash-image">Gemini 2.5 Flash</option>
+                            </select>
+                        </div>
+                    </div>
+                </details>
                 <datalist id="animals">
                     {commonAnimals.map(a => <option key={a} value={a} />)}
                 </datalist>
