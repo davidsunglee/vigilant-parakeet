@@ -27,10 +27,12 @@ Move the provider/model selectors from above the form to below it, inside a nati
 
 **LLM Provider:** When multiple providers are available, default to `anthropic` instead of `gemini`. Anthropic produces better narrative quality for this app's story generation use case.
 
-- Change `defaultConfig.llmProvider` from `'gemini'` to `'anthropic'` in `AiConfigContext.tsx`
-- Update the auto-selection logic: when both API keys are present, prefer Anthropic
+- Change `defaultConfig.llmProvider` from `'gemini'` to `'anthropic'` in `AiConfigContext.tsx`. No additional auto-selection logic needed — the existing fallback already prefers the default when available.
 
-**Image Model:** Change the default from `gemini-2.5-flash-image` to `gemini-3.1-flash-image-preview` in the Dashboard component's `<select>` element.
+**Image Model:** Change the default from `gemini-2.5-flash-image` to `gemini-3.1-flash-image-preview`:
+
+- Change the nullish coalescing fallback in Dashboard from `config.imageModel ?? 'gemini-2.5-flash-image'` to `config.imageModel ?? 'gemini-3.1-flash-image-preview'`
+- Reorder the `<option>` elements so `gemini-3.1-flash-image-preview` is first
 
 ### What Stays the Same
 
@@ -43,4 +45,4 @@ Move the provider/model selectors from above the form to below it, inside a nati
 
 - `apex/src/components/dashboard/Dashboard.tsx` — move selectors below form, wrap in `<details>`, update image model default
 - `apex/src/index.css` — update `.provider-selector` styles for horizontal layout within disclosure
-- `apex/src/contexts/AiConfigContext.tsx` — change default LLM provider to `anthropic`, update auto-selection preference order
+- `apex/src/contexts/AiConfigContext.tsx` — change default LLM provider to `anthropic`
