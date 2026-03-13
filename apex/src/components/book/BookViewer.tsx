@@ -88,7 +88,10 @@ export const BookViewer: React.FC<{ storyId: string; onClose: () => void }> = ({
                         {story.pages.map((page) => (
                             <div key={page.index} className={`page ${page.isLeftPage ? 'page-left' : 'page-right'}`}>
                                 <div className="page-content">
-                                    {page.title && <h3 className="page-title">{page.title}</h3>}
+                                    <div className="header-zone">
+                                        {page.isLeftPage && page.title && <h3 className="page-title">{page.title}</h3>}
+                                        <div className="header-accent-line" />
+                                    </div>
 
                                     <div className="page-media-layout">
                                         <div className="visual-content">
@@ -103,24 +106,25 @@ export const BookViewer: React.FC<{ storyId: string; onClose: () => void }> = ({
 
                                         <div className="text-content">
                                             <p>{page.bodyText}</p>
-
-                                            {page.funFact && (
-                                                <div className="fun-fact-box">
-                                                    <h4>
-                                                        <div className="fun-fact-icon-wrapper">
-                                                            <Info size={18} />
-                                                            <div className="fun-fact-tooltip">
-                                                                {page.funFact}
-                                                            </div>
-                                                        </div>
-                                                        Fun Fact
-                                                    </h4>
-                                                </div>
-                                            )}
                                         </div>
-                                    </div>
 
-                                    <div className="page-number">{page.index}</div>
+                                        {page.funFact && (
+                                            <div className="fun-fact-box">
+                                                <h4>
+                                                    <div className="fun-fact-icon-wrapper">
+                                                        <Info size={18} />
+                                                        <div className="fun-fact-tooltip">
+                                                            {page.funFact}
+                                                        </div>
+                                                    </div>
+                                                    Fun Fact
+                                                </h4>
+                                            </div>
+                                        )}
+
+                                        <div className="footer-line" />
+                                        <div className="page-number">{page.index}</div>
+                                    </div>
                                 </div>
                             </div>
                         ))}
