@@ -14,7 +14,7 @@ interface AiConfigContextValue {
 }
 
 const defaultConfig: AiConfig = {
-  llmProvider: 'gemini',
+  llmProvider: 'anthropic',
   imageProvider: 'gemini',
 };
 
