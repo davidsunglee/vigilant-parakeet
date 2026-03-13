@@ -103,25 +103,54 @@ button {
   font-size: 1.5rem;
 }
 
+/* Advanced Options Disclosure */
+.advanced-options {
+    margin-top: 20px;
+    border-top: 1px solid var(--border-color);
+    padding-top: 16px;
+    text-align: left;
+}
+
+.advanced-options summary {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-weight: 500;
+    padding: 4px 0;
+    list-style: revert;
+}
+
+.advanced-options summary:hover {
+    color: var(--text-primary);
+}
+
+.advanced-options-content {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+}
+
 .provider-selector {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    margin-bottom: 1rem;
 }
 
 .provider-selector label {
     font-size: 0.9rem;
-    color: var(--text-secondary, #a0a0a0);
+    color: var(--text-secondary);
 }
 
 .provider-selector select {
     padding: 0.4rem 0.8rem;
     border-radius: 6px;
-    border: 1px solid var(--border-color, #333);
-    background: var(--input-bg, #1a1d26);
-    color: var(--text-primary, #e0e0e0);
+    border: 1px solid var(--border-color);
+    background: var(--bg-color);
+    color: var(--text-primary);
     font-size: 0.9rem;
+    font-family: inherit;
 }
 
 .generator-form {
