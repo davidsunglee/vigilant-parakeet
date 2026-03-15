@@ -120,4 +120,141 @@ describe('ImageService', () => {
         const result = await ImageService.generateImage(mockConfig, 'prompt');
         expect(result).toBe('');
     });
+
+    // Retry logic tests
+    describe('retry logic', () => {
+        it('retries on 429 status with exponential backoff', async () => {
+            vi.useFakeTimers({ shouldAdvanceTime: true });
+
+            const fetchMock = vi.fn()
+                .mockResolvedValueOnce({
+                    ok: false,
+                    status: 429,
+                    statusText: 'Too Many Requests',
+                    json: () => Promise.resolve({ error: 'Rate limited' }),
+                })
+                .mockResolvedValueOnce({
+                    ok: true,
+                    json: () => Promise.resolve({ imageDataUri: 'data:image/png;base64,success' }),
+                });
+
+            global.fetch = fetchMock;
+
+            const result = await ImageService.generateImage(mockConfig, 'prompt');
+
+            expect(fetchMock).toHaveBeenCalledTimes(2);
+            expect(result).toBe('data:image/png;base64,success');
+
+            vi.useRealTimers();
+        });
+
+        it('retries on network error with exponential backoff', async () => {
+            vi.useFakeTimers({ shouldAdvanceTime: true });
+
+            const fetchMock = vi.fn()
+                .mockRejectedValueOnce(new Error('Network failure'))
+                .mockResolvedValueOnce({
+                    ok: true,
+                    json: () => Promise.resolve({ imageDataUri: 'data:image/png;base64,recovered' }),
+                });
+
+            global.fetch = fetchMock;
+
+            const result = await ImageService.generateImage(mockConfig, 'prompt');
+
+            expect(fetchMock).toHaveBeenCalledTimes(2);
+            expect(result).toBe('data:image/png;base64,recovered');
+
+            vi.useRealTimers();
+        });
+
+        it('returns empty string after exhausting all retries on 429', async () => {
+            vi.useFakeTimers({ shouldAdvanceTime: true });
+
+            const fetchMock = vi.fn().mockResolvedValue({
+                ok: false,
+                status: 429,
+                statusText: 'Too Many Requests',
+                json: () => Promise.resolve({ error: 'Rate limited' }),
+            });
+
+            global.fetch = fetchMock;
+
+            const result = await ImageService.generateImage(mockConfig, 'prompt', undefined, 3);
+
+            // Should retry twice (attempts 0 and 1), then fail on attempt 2 (last attempt, no retry)
+            expect(fetchMock).toHaveBeenCalledTimes(3);
+            expect(result).toBe('');
+
+            vi.useRealTimers();
+        });
+
+        it('returns empty string after exhausting all retries on network errors', async () => {
+            vi.useFakeTimers({ shouldAdvanceTime: true });
+
+            const fetchMock = vi.fn().mockRejectedValue(new Error('Network failure'));
+
+            global.fetch = fetchMock;
+
+            const result = await ImageService.generateImage(mockConfig, 'prompt', undefined, 3);
+
+            expect(fetchMock).toHaveBeenCalledTimes(3);
+            expect(result).toBe('');
+
+            vi.useRealTimers();
+        });
+
+        it('does not retry on non-429 HTTP errors', async () => {
+            const fetchMock = vi.fn().mockResolvedValue({
+                ok: false,
+                status: 500,
+                statusText: 'Internal Server Error',
+                json: () => Promise.resolve({ error: 'Server Error' }),
+            });
+
+            global.fetch = fetchMock;
+
+            const result = await ImageService.generateImage(mockConfig, 'prompt');
+
+            // Should not retry on 500 - returns immediately
+            expect(fetchMock).toHaveBeenCalledTimes(1);
+            expect(result).toBe('');
+        });
+
+        it('respects custom retry count', async () => {
+            vi.useFakeTimers({ shouldAdvanceTime: true });
+
+            const fetchMock = vi.fn().mockRejectedValue(new Error('Network failure'));
+
+            global.fetch = fetchMock;
+
+            const result = await ImageService.generateImage(mockConfig, 'prompt', undefined, 2);
+
+            expect(fetchMock).toHaveBeenCalledTimes(2);
+            expect(result).toBe('');
+
+            vi.useRealTimers();
+        });
+
+        it('succeeds on the last retry attempt', async () => {
+            vi.useFakeTimers({ shouldAdvanceTime: true });
+
+            const fetchMock = vi.fn()
+                .mockRejectedValueOnce(new Error('fail 1'))
+                .mockRejectedValueOnce(new Error('fail 2'))
+                .mockResolvedValueOnce({
+                    ok: true,
+                    json: () => Promise.resolve({ imageDataUri: 'data:image/png;base64,finally' }),
+                });
+
+            global.fetch = fetchMock;
+
+            const result = await ImageService.generateImage(mockConfig, 'prompt', undefined, 3);
+
+            expect(fetchMock).toHaveBeenCalledTimes(3);
+            expect(result).toBe('data:image/png;base64,finally');
+
+            vi.useRealTimers();
+        });
+    });
 });

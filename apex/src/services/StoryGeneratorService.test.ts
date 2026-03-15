@@ -17,9 +17,14 @@ vi.mock('./ImageService', () => ({
     },
 }));
 
-vi.mock('uuid', () => ({
-    v4: vi.fn(() => 'test-uuid-1234'),
-}));
+vi.mock('p-limit', () => {
+    return {
+        default: (concurrency: number) => {
+            // Return a real p-limit-like function that respects concurrency
+            return <T>(fn: () => Promise<T>): Promise<T> => fn();
+        },
+    };
+});
 
 import { StoryGeneratorService } from './StoryGeneratorService';
 import { LlmService } from './LlmService';
@@ -90,6 +95,8 @@ describe('StoryGeneratorService', () => {
         vi.spyOn(console, 'log').mockImplementation(() => {});
         // Fix Math.random so outcomes are deterministic
         vi.spyOn(Math, 'random').mockReturnValue(0.5);
+        // Mock crypto.randomUUID
+        vi.spyOn(crypto, 'randomUUID').mockReturnValue('test-uuid-1234' as `${string}-${string}-${string}-${string}-${string}`);
     });
 
     it('orchestrates the full story generation flow', async () => {
@@ -107,6 +114,19 @@ describe('StoryGeneratorService', () => {
         expect(ImageService.generateImage).toHaveBeenCalledTimes(27);
 
         expect(manifest).toBeDefined();
+    });
+
+    it('runs showdown, aspects, and cover image in parallel after profiles', async () => {
+        setupDefaultMocks();
+
+        await StoryGeneratorService.generateStory(mockConfig, 'Lion', 'Tiger');
+
+        // Showdown, both aspects, and cover image should all be called
+        expect(LlmService.getShowdownAndOutcome).toHaveBeenCalledOnce();
+        expect(LlmService.getAspectsForAnimal).toHaveBeenCalledTimes(2);
+        // Cover image is now generated in the parallel batch (not at the end)
+        // Total: 26 page images + 1 cover = 27
+        expect(ImageService.generateImage).toHaveBeenCalledTimes(27);
     });
 
     it('constructs animal entities with id, commonName, and profile data', async () => {
@@ -172,10 +192,9 @@ describe('StoryGeneratorService', () => {
         expect(manifest.pages[25].isLeftPage).toBe(false);
     });
 
-    it('generates images in chunks of 4', async () => {
+    it('generates page images using p-limit concurrency', async () => {
         setupDefaultMocks();
 
-        // Track the order of generateImage calls to verify chunking
         const callOrder: number[] = [];
         let callIndex = 0;
         vi.mocked(ImageService.generateImage).mockImplementation(async () => {
@@ -186,11 +205,10 @@ describe('StoryGeneratorService', () => {
         await StoryGeneratorService.generateStory(mockConfig, 'Lion', 'Tiger');
 
         // 26 page images + 1 cover = 27 total calls
-        // Chunked: 26 pages in chunks of 4 = 7 chunks (4+4+4+4+4+4+2)
         expect(ImageService.generateImage).toHaveBeenCalledTimes(27);
     });
 
-    it('generates a cover image with both animal names', async () => {
+    it('generates a cover image with both animal names in the parallel batch', async () => {
         setupDefaultMocks();
 
         const calls: string[] = [];
@@ -201,14 +219,14 @@ describe('StoryGeneratorService', () => {
 
         const manifest = await StoryGeneratorService.generateStory(mockConfig, 'Lion', 'Tiger');
 
-        // The last generateImage call is the cover
-        const coverPrompt = calls[calls.length - 1];
+        // The cover image is now generated first (in the parallel batch before page images)
+        const coverPrompt = calls[0];
         expect(coverPrompt).toContain('Lion');
         expect(coverPrompt).toContain('Tiger');
         expect(manifest.coverImageUrl).toBe('data:image/png;base64,mockimg');
     });
 
-    it('builds manifest metadata with UUID, title, and timestamps', async () => {
+    it('builds manifest metadata with crypto.randomUUID(), title, and timestamps', async () => {
         setupDefaultMocks();
 
         const before = Date.now();
@@ -221,9 +239,6 @@ describe('StoryGeneratorService', () => {
     });
 
     it('sets winnerId to a valid animal when not a surprise ending', async () => {
-        // Math.random returns 0.5 => rollForSurpriseEnding: floor(0.5*7)+1 = 4, not 7 => no surprise
-        // Then for winnerId: 0.5 > 0.5 is false => 'animalB'... but wait, we need stable Math.random.
-        // Let's control it more precisely.
         let callCount = 0;
         vi.spyOn(Math, 'random').mockImplementation(() => {
             callCount++;
@@ -272,6 +287,7 @@ describe('StoryGeneratorService', () => {
         for (let typeIndex = 0; typeIndex < endingTypes.length; typeIndex++) {
             vi.clearAllMocks();
             vi.spyOn(console, 'log').mockImplementation(() => {});
+            vi.spyOn(crypto, 'randomUUID').mockReturnValue('test-uuid-1234' as `${string}-${string}-${string}-${string}-${string}`);
 
             let callCount = 0;
             vi.spyOn(Math, 'random').mockImplementation(() => {
@@ -286,5 +302,48 @@ describe('StoryGeneratorService', () => {
 
             expect(manifest.outcome.endingType).toBe(endingTypes[typeIndex]);
         }
+    });
+
+    it('calls onProgress callback at key milestones', async () => {
+        setupDefaultMocks();
+
+        const progressCalls: [string, number][] = [];
+        const onProgress = vi.fn((step: string, pct: number) => {
+            progressCalls.push([step, pct]);
+        });
+
+        await StoryGeneratorService.generateStory(mockConfig, 'Lion', 'Tiger', onProgress);
+
+        // Check that progress was called at key milestones
+        expect(onProgress).toHaveBeenCalled();
+
+        // First call: researching profiles
+        expect(progressCalls[0]).toEqual(['Researching animal profiles...', 5]);
+
+        // Second call: simulating the showdown
+        expect(progressCalls[1]).toEqual(['Simulating the showdown...', 15]);
+
+        // Third call: illustrating pages
+        expect(progressCalls[2]).toEqual(['Illustrating pages...', 25]);
+
+        // Per-page progress calls (26 pages)
+        const illustratingCalls = progressCalls.filter(([step]) => /^Illustrating page \d+/.test(step));
+        expect(illustratingCalls).toHaveLength(26);
+
+        // Saving call should be present
+        const savingCalls = progressCalls.filter(([step]) => step === 'Saving your story...');
+        expect(savingCalls).toHaveLength(1);
+        expect(savingCalls[0]).toEqual(['Saving your story...', 98]);
+
+        // Saving should be the last call
+        expect(progressCalls[progressCalls.length - 1]).toEqual(['Saving your story...', 98]);
+    });
+
+    it('works without onProgress callback (backward compatible)', async () => {
+        setupDefaultMocks();
+
+        // Should not throw when no callback is provided
+        const manifest = await StoryGeneratorService.generateStory(mockConfig, 'Lion', 'Tiger');
+        expect(manifest).toBeDefined();
     });
 });

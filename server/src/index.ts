@@ -30,7 +30,7 @@ if (anthropicKey) {
 }
 
 const app = new Elysia()
-  .use(cors({ origin: 'http://localhost:5173' }))
+  .use(cors({ origin: process.env.CORS_ORIGIN || 'http://localhost:5173' }))
   .decorate('registry', registry)
   .use(llmRoute)
   .use(imageRoute)

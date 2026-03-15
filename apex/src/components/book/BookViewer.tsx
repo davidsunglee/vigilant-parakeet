@@ -15,8 +15,9 @@ export const BookViewer: React.FC<{ storyId: string; onClose: () => void }> = ({
             const data = await StorageService.getStory(storyId);
             if (data) {
                 setStory(data);
+                // #8: Use markAsRead instead of updateStory to avoid redundant read
                 if (!data.metadata.hasBeenRead) {
-                    await StorageService.updateStory(storyId, { metadata: { ...data.metadata, hasBeenRead: true } });
+                    await StorageService.markAsRead(storyId);
                 }
             }
         };
@@ -71,7 +72,13 @@ export const BookViewer: React.FC<{ storyId: string; onClose: () => void }> = ({
                         {/* Front Cover */}
                         <div className="page page-cover">
                             {story.coverImageUrl && (
-                                <img src={story.coverImageUrl} alt="Cover" className="book-cover-image" />
+                                <img
+                                    src={story.coverImageUrl}
+                                    alt="Cover"
+                                    className="book-cover-image"
+                                    loading="lazy"
+                                    decoding="async"
+                                />
                             )}
                             <div className="book-cover-overlay" />
                             <div className="page-content">
@@ -96,7 +103,13 @@ export const BookViewer: React.FC<{ storyId: string; onClose: () => void }> = ({
                                     <div className="page-media-layout">
                                         <div className="visual-content">
                                             {page.imageUrl ? (
-                                                <img src={page.imageUrl} alt="Generated Illustration" className="generated-image" />
+                                                <img
+                                                    src={page.imageUrl}
+                                                    alt="Generated Illustration"
+                                                    className="generated-image"
+                                                    loading="lazy"
+                                                    decoding="async"
+                                                />
                                             ) : (
                                                 <div className="placeholder-image">
                                                     <span>{page.visualPrompt}</span>
