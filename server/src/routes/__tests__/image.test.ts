@@ -90,4 +90,57 @@ describe('POST /api/image/generate', () => {
     expect(lastRequest!.aspectRatio).toBeUndefined();
     expect(lastRequest!.resolution).toBeUndefined();
   });
+
+  it('returns 502 with GENERATION_FAILED when adapter throws an Error', async () => {
+    const failingProvider: IImageProvider = {
+      generate: async () => { throw new Error('rate limited'); },
+    };
+    const registry = new ProviderRegistry();
+    registry.registerImage('fail', failingProvider);
+    const failApp = new Elysia().decorate('registry', registry).use(imageRoute);
+
+    const res = await failApp.handle(
+      new Request('http://localhost/api/image/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider: 'fail', prompt: 'a cat' }),
+      })
+    );
+    expect(res.status).toBe(502);
+    const body = await res.json();
+    expect(body.code).toBe('GENERATION_FAILED');
+    expect(body.error).toBe('rate limited');
+  });
+
+  it('returns 502 with Unknown error when adapter throws a non-Error', async () => {
+    const failingProvider: IImageProvider = {
+      generate: async () => { throw 42; },
+    };
+    const registry = new ProviderRegistry();
+    registry.registerImage('fail', failingProvider);
+    const failApp = new Elysia().decorate('registry', registry).use(imageRoute);
+
+    const res = await failApp.handle(
+      new Request('http://localhost/api/image/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider: 'fail', prompt: 'a cat' }),
+      })
+    );
+    expect(res.status).toBe(502);
+    const body = await res.json();
+    expect(body.code).toBe('GENERATION_FAILED');
+    expect(body.error).toBe('Unknown error');
+  });
+
+  it('returns 422 when required body fields are missing', async () => {
+    const res = await app.handle(
+      new Request('http://localhost/api/image/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      })
+    );
+    expect(res.status).toBe(422);
+  });
 });
