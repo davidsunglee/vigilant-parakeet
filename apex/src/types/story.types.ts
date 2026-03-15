@@ -59,5 +59,18 @@ export interface IStoryManifest {
   readonly outcome: IBattleOutcome;
 }
 
+/**
+ * Lightweight manifest that excludes pages and their images.
+ * Used by the dashboard to avoid loading multi-MB page data.
+ */
+export interface IStoryManifestLite {
+    metadata: IStoryMetadata;
+    animalA: IAnimalEntity;
+    animalB: IAnimalEntity;
+    coverImageUrl?: string;
+    checklist: ITraitChecklist;
+    outcome: IBattleOutcome;
+}
+
 // Utility pattern for Prompt Engineering mapping
 export type PromptStructure<T> = Record<keyof T, undefined>;
