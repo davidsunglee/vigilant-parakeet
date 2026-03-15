@@ -45,4 +45,19 @@ describe('ProviderRegistry', () => {
     registry.registerImage('gemini', mockImage);
     expect(registry.listImageProviders()).toEqual(['gemini']);
   });
+
+  it('overwrites a provider when registering the same name twice', () => {
+    const otherLlm: ILlmProvider = {
+      generate: async (req: LlmRequest): Promise<LlmResponse> => ({ data: { replaced: true } }),
+    };
+    registry.registerLlm('test', mockLlm);
+    registry.registerLlm('test', otherLlm);
+    expect(registry.getLlm('test')).toBe(otherLlm);
+    expect(registry.listLlmProviders()).toEqual(['test']);
+  });
+
+  it('returns empty lists on a fresh registry', () => {
+    expect(registry.listLlmProviders()).toEqual([]);
+    expect(registry.listImageProviders()).toEqual([]);
+  });
 });

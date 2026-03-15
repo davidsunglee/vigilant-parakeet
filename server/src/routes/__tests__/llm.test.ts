@@ -77,4 +77,65 @@ describe('POST /api/llm/generate', () => {
     const body = await res.json();
     expect(body.code).toBe('UNKNOWN_PROVIDER');
   });
+
+  it('returns 502 with GENERATION_FAILED when adapter throws an Error', async () => {
+    const failingProvider: ILlmProvider = {
+      generate: async () => { throw new Error('model overloaded'); },
+    };
+    const registry = new ProviderRegistry();
+    registry.registerLlm('fail', failingProvider);
+    const failApp = new Elysia().decorate('registry', registry).use(llmRoute);
+
+    const res = await failApp.handle(
+      new Request('http://localhost/api/llm/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider: 'fail',
+          prompt: 'hello',
+          responseSchema: { type: 'object', properties: {} },
+        }),
+      })
+    );
+    expect(res.status).toBe(502);
+    const body = await res.json();
+    expect(body.code).toBe('GENERATION_FAILED');
+    expect(body.error).toBe('model overloaded');
+  });
+
+  it('returns 502 with Unknown error when adapter throws a non-Error', async () => {
+    const failingProvider: ILlmProvider = {
+      generate: async () => { throw 'string-error'; },
+    };
+    const registry = new ProviderRegistry();
+    registry.registerLlm('fail', failingProvider);
+    const failApp = new Elysia().decorate('registry', registry).use(llmRoute);
+
+    const res = await failApp.handle(
+      new Request('http://localhost/api/llm/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider: 'fail',
+          prompt: 'hello',
+          responseSchema: { type: 'object', properties: {} },
+        }),
+      })
+    );
+    expect(res.status).toBe(502);
+    const body = await res.json();
+    expect(body.code).toBe('GENERATION_FAILED');
+    expect(body.error).toBe('Unknown error');
+  });
+
+  it('returns 422 when required body fields are missing', async () => {
+    const res = await app.handle(
+      new Request('http://localhost/api/llm/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      })
+    );
+    expect(res.status).toBe(422);
+  });
 });
