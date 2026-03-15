@@ -1,12 +1,90 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { BookOpen, Search, Sparkles, Trash2, Trophy, Loader, Eye } from 'lucide-react';
-import { IStoryManifest } from '../../types/story.types';
+import { IStoryManifest, IStoryManifestLite } from '../../types/story.types';
 import { StorageService } from '../../services/StorageService';
 import { StoryGeneratorService } from '../../services/StoryGeneratorService';
 import { useAiConfig } from '../../contexts/AiConfigContext';
 
+// #14: Static generation messages moved to module scope
+const GENERATION_MESSAGES = [
+    { emoji: '\u{1F52C}', text: 'Researching animal profiles...' },
+    { emoji: '\u{1F4CA}', text: 'Analyzing biological stats...' },
+    { emoji: '\u{1F9E0}', text: 'Comparing intelligence levels...' },
+    { emoji: '\u2694\uFE0F', text: 'Simulating the showdown...' },
+    { emoji: '\u{1F3A8}', text: 'Illustrating the pages...' },
+    { emoji: '\u{1F5BC}\uFE0F', text: 'Generating cover art...' },
+    { emoji: '\u270D\uFE0F', text: 'Writing the narrative...' },
+    { emoji: '\u{1F4D6}', text: 'Binding the book...' },
+] as const;
+
+// Example animal list for simple auto-complete/search proxy
+const commonAnimals = ['Lion', 'Tiger', 'Polar Bear', 'Grizzly Bear', 'Great White Shark', 'Killer Whale', 'Komodo Dragon', 'King Cobra', 'Hippopotamus', 'Rhinoceros', 'Tarantula', 'Scorpion', 'T-Rex', 'Velociraptor'];
+
+// #6: Memoized StoryCard component
+const StoryCard = React.memo<{
+    story: IStoryManifestLite;
+    isWinnerRevealed: boolean;
+    onToggleWinner: (id: string) => void;
+    onReadStory: (id: string) => void;
+    onDelete: (id: string) => void;
+}>(({ story, isWinnerRevealed, onToggleWinner, onReadStory, onDelete }) => (
+    <div className="story-card">
+        <div className="story-card-inner">
+            <div className="custom-cover">
+                {story.coverImageUrl ? (
+                    <img
+                        src={story.coverImageUrl}
+                        alt={`${story.animalA.commonName} vs ${story.animalB.commonName}`}
+                        className="cover-image"
+                        loading="lazy"
+                        decoding="async"
+                    />
+                ) : null}
+                <div className="cover-overlay">
+                    <h3>{story.animalA.commonName}</h3>
+                    <span className="cover-vs">VS</span>
+                    <h3>{story.animalB.commonName}</h3>
+                </div>
+            </div>
+            <div className="story-info">
+                <h4>{story.metadata.title}</h4>
+                <p className="date">{new Date(story.metadata.createdAt).toLocaleDateString()}</p>
+
+                {isWinnerRevealed ? (
+                    <button
+                        className="winner-badge"
+                        onClick={(e) => { e.stopPropagation(); onToggleWinner(story.metadata.id); }}
+                    >
+                        <Trophy size={14} /> Winner: {story.outcome.winnerId === 'none' ? 'None (Surprise!)' : (story.outcome.winnerId === 'animalA' ? story.animalA.commonName : story.animalB.commonName)}
+                    </button>
+                ) : (
+                    <button
+                        className="reveal-winner-btn"
+                        onClick={(e) => { e.stopPropagation(); onToggleWinner(story.metadata.id); }}
+                    >
+                        <Eye size={14} /> Reveal Winner
+                    </button>
+                )}
+            </div>
+            <div className="card-actions">
+                <button onClick={() => onReadStory(story.metadata.id)} className="read-btn">
+                    <BookOpen size={16} /> Read Full Book
+                </button>
+                <button
+                    onClick={(e) => { e.stopPropagation(); onDelete(story.metadata.id); }}
+                    className="delete-btn"
+                    aria-label="Delete Story"
+                >
+                    <Trash2 size={16} />
+                </button>
+            </div>
+        </div>
+    </div>
+));
+StoryCard.displayName = 'StoryCard';
+
 export const Dashboard: React.FC<{ onReadStory: (id: string) => void }> = ({ onReadStory }) => {
-    const [stories, setStories] = useState<IStoryManifest[]>([]);
+    const [stories, setStories] = useState<IStoryManifestLite[]>([]);
     const [animalA, setAnimalA] = useState('');
     const [animalB, setAnimalB] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
@@ -14,29 +92,24 @@ export const Dashboard: React.FC<{ onReadStory: (id: string) => void }> = ({ onR
     const [revealedWinners, setRevealedWinners] = useState<Set<string>>(new Set());
     const { config, setConfig, availableProviders } = useAiConfig();
 
-    const toggleWinnerReveal = (id: string) => {
+    // #7: Progress state
+    const [progressStep, setProgressStep] = useState('');
+    const [progressPct, setProgressPct] = useState(0);
+
+    // #6: Memoized callbacks
+    const toggleWinnerReveal = useCallback((id: string) => {
         setRevealedWinners(prev => {
             const next = new Set(prev);
             if (next.has(id)) next.delete(id);
             else next.add(id);
             return next;
         });
-    };
+    }, []);
 
-    const generationMessages = [
-        { emoji: '🔬', text: 'Researching animal profiles...' },
-        { emoji: '📊', text: 'Analyzing biological stats...' },
-        { emoji: '🧠', text: 'Comparing intelligence levels...' },
-        { emoji: '⚔️', text: 'Simulating the showdown...' },
-        { emoji: '🎨', text: 'Illustrating the pages...' },
-        { emoji: '🖼️', text: 'Generating cover art...' },
-        { emoji: '✍️', text: 'Writing the narrative...' },
-        { emoji: '📖', text: 'Binding the book...' },
-    ];
-
+    // #14: Empty dependency array since GENERATION_MESSAGES is at module scope
     const cycleGenerationStep = useCallback(() => {
-        setGenerationStep(prev => (prev + 1) % generationMessages.length);
-    }, [generationMessages.length]);
+        setGenerationStep(prev => (prev + 1) % GENERATION_MESSAGES.length);
+    }, []);
 
     useEffect(() => {
         if (!isGenerating) {
@@ -47,11 +120,8 @@ export const Dashboard: React.FC<{ onReadStory: (id: string) => void }> = ({ onR
         return () => clearInterval(interval);
     }, [isGenerating, cycleGenerationStep]);
 
-    // Example animal list for simple auto-complete/search proxy
-    const commonAnimals = ['Lion', 'Tiger', 'Polar Bear', 'Grizzly Bear', 'Great White Shark', 'Killer Whale', 'Komodo Dragon', 'King Cobra', 'Hippopotamus', 'Rhinoceros', 'Tarantula', 'Scorpion', 'T-Rex', 'Velociraptor'];
-
     const loadStories = async () => {
-        const data = await StorageService.getAllStories();
+        const data = await StorageService.getAllManifests();
         setStories(data);
     };
 
@@ -59,26 +129,35 @@ export const Dashboard: React.FC<{ onReadStory: (id: string) => void }> = ({ onR
         loadStories();
     }, []);
 
-    const handleGenerate = async (e: React.FormEvent) => {
+    // #6: Memoized handleGenerate
+    const handleGenerate = useCallback(async (e: React.FormEvent) => {
         e.preventDefault();
         if (!animalA.trim() || !animalB.trim()) return;
 
         setIsGenerating(true);
+        setProgressStep('');
+        setProgressPct(0);
         try {
-            const newStory = await StoryGeneratorService.generateStory(config, animalA.trim(), animalB.trim());
+            // #7: Pass progress callback
+            const newStory = await StoryGeneratorService.generateStory(
+                config, animalA.trim(), animalB.trim(),
+                (step, pct) => { setProgressStep(step); setProgressPct(pct); }
+            );
             await StorageService.saveStory(newStory);
             setAnimalA('');
             setAnimalB('');
-            await loadStories();
+            // #13: Optimistic story append instead of re-reading all from IndexedDB
+            setStories(prev => [newStory, ...prev]);
         } catch (error) {
             console.error(error);
             alert('Failed to generate story.');
         } finally {
             setIsGenerating(false);
         }
-    };
+    }, [animalA, animalB, config]);
 
-    const handleDelete = async (id: string) => {
+    // #6: Memoized handleDelete
+    const handleDelete = useCallback(async (id: string) => {
         console.log('[Dashboard] Deleting story:', id);
         // Optimistically remove from UI immediately
         setStories(prev => prev.filter(s => s.metadata.id !== id));
@@ -90,7 +169,17 @@ export const Dashboard: React.FC<{ onReadStory: (id: string) => void }> = ({ onR
             // Reload to restore if delete failed
             await loadStories();
         }
-    };
+    }, []);
+
+    // #6: Memoized stories list
+    const sortedStories = useMemo(() => stories, [stories]);
+
+    // Determine display message and percentage for overlay
+    const displayStep = progressStep || GENERATION_MESSAGES[generationStep].text;
+    const displayEmoji = progressStep
+        ? (GENERATION_MESSAGES.find(m => progressStep.includes(m.text.replace('...', '')))?.emoji ?? '\u2699\uFE0F')
+        : GENERATION_MESSAGES[generationStep].emoji;
+    const displayPct = progressPct;
 
     return (
         <div className="dashboard-container">
@@ -179,11 +268,19 @@ export const Dashboard: React.FC<{ onReadStory: (id: string) => void }> = ({ onR
                             {animalA || '???'} <span>vs</span> {animalB || '???'}
                         </p>
                         <div className="generation-status">
-                            <span className="generation-emoji">{generationMessages[generationStep].emoji}</span>
-                            <span className="generation-message">{generationMessages[generationStep].text}</span>
+                            <span className="generation-emoji">{displayEmoji}</span>
+                            <span className="generation-message">{displayStep}</span>
                         </div>
+                        {/* #7: Real progress bar tied to progressPct */}
                         <div className="generation-progress-track">
-                            <div className="generation-progress-bar" />
+                            <div
+                                className="generation-progress-bar"
+                                style={{ width: `${displayPct}%` }}
+                                role="progressbar"
+                                aria-valuenow={displayPct}
+                                aria-valuemin={0}
+                                aria-valuemax={100}
+                            />
                         </div>
                         <p className="generation-hint">This may take a minute — we're generating AI illustrations for every page!</p>
                     </div>
@@ -191,61 +288,23 @@ export const Dashboard: React.FC<{ onReadStory: (id: string) => void }> = ({ onR
             )}
 
             <div className="stories-section">
-                <h2>Your Library ({stories.length})</h2>
-                {stories.length === 0 ? (
+                <h2>Your Library ({sortedStories.length})</h2>
+                {sortedStories.length === 0 ? (
                     <div className="empty-state">
                         <BookOpen size={48} className="empty-icon" />
                         <p>Your library is empty. Generate a story to begin the ultimate showdown!</p>
                     </div>
                 ) : (
                     <div className="story-grid">
-                        {stories.map(story => (
-                            <div key={story.metadata.id} className="story-card">
-                                <div className="story-card-inner">
-                                    <div className="custom-cover">
-                                        {story.coverImageUrl ? (
-                                            <img src={story.coverImageUrl} alt={`${story.animalA.commonName} vs ${story.animalB.commonName}`} className="cover-image" />
-                                        ) : null}
-                                        <div className="cover-overlay">
-                                            <h3>{story.animalA.commonName}</h3>
-                                            <span className="cover-vs">VS</span>
-                                            <h3>{story.animalB.commonName}</h3>
-                                        </div>
-                                    </div>
-                                    <div className="story-info">
-                                        <h4>{story.metadata.title}</h4>
-                                        <p className="date">{new Date(story.metadata.createdAt).toLocaleDateString()}</p>
-
-                                        {revealedWinners.has(story.metadata.id) ? (
-                                            <button
-                                                className="winner-badge"
-                                                onClick={(e) => { e.stopPropagation(); toggleWinnerReveal(story.metadata.id); }}
-                                            >
-                                                <Trophy size={14} /> Winner: {story.outcome.winnerId === 'none' ? 'None (Surprise!)' : (story.outcome.winnerId === 'animalA' ? story.animalA.commonName : story.animalB.commonName)}
-                                            </button>
-                                        ) : (
-                                            <button
-                                                className="reveal-winner-btn"
-                                                onClick={(e) => { e.stopPropagation(); toggleWinnerReveal(story.metadata.id); }}
-                                            >
-                                                <Eye size={14} /> Reveal Winner
-                                            </button>
-                                        )}
-                                    </div>
-                                    <div className="card-actions">
-                                        <button onClick={() => onReadStory(story.metadata.id)} className="read-btn">
-                                            <BookOpen size={16} /> Read Full Book
-                                        </button>
-                                        <button
-                                            onClick={(e) => { e.stopPropagation(); handleDelete(story.metadata.id); }}
-                                            className="delete-btn"
-                                            aria-label="Delete Story"
-                                        >
-                                            <Trash2 size={16} />
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
+                        {sortedStories.map(story => (
+                            <StoryCard
+                                key={story.metadata.id}
+                                story={story}
+                                isWinnerRevealed={revealedWinners.has(story.metadata.id)}
+                                onToggleWinner={toggleWinnerReveal}
+                                onReadStory={onReadStory}
+                                onDelete={handleDelete}
+                            />
                         ))}
                     </div>
                 )}
