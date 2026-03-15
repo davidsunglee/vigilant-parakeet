@@ -116,4 +116,80 @@ describe('GeminiImageAdapter', () => {
     const callArgs = generateContent.mock.calls[0][0];
     expect(callArgs.config.imageConfig).toBeUndefined();
   });
+
+  it('throws when response has no candidates', async () => {
+    const adapter = new GeminiImageAdapter('fake-key');
+    const generateContent = mock(() => Promise.resolve({ candidates: [] }));
+    (adapter as any).client = { models: { generateContent } };
+
+    await expect(adapter.generate({ prompt: 'a cat' })).rejects.toThrow(
+      'No image data in Gemini response'
+    );
+  });
+
+  it('throws when candidates have no content parts', async () => {
+    const adapter = new GeminiImageAdapter('fake-key');
+    const generateContent = mock(() =>
+      Promise.resolve({
+        candidates: [{ content: { parts: [] } }],
+      })
+    );
+    (adapter as any).client = { models: { generateContent } };
+
+    await expect(adapter.generate({ prompt: 'a cat' })).rejects.toThrow(
+      'No image data in Gemini response'
+    );
+  });
+
+  it('throws when parts have no inlineData', async () => {
+    const adapter = new GeminiImageAdapter('fake-key');
+    const generateContent = mock(() =>
+      Promise.resolve({
+        candidates: [{ content: { parts: [{ text: 'sorry' }] } }],
+      })
+    );
+    (adapter as any).client = { models: { generateContent } };
+
+    await expect(adapter.generate({ prompt: 'a cat' })).rejects.toThrow(
+      'No image data in Gemini response'
+    );
+  });
+
+  it('uses custom mimeType from inlineData in data URI', async () => {
+    const adapter = new GeminiImageAdapter('fake-key');
+    const generateContent = mock(() =>
+      Promise.resolve({
+        candidates: [
+          {
+            content: {
+              parts: [{ inlineData: { data: 'abc123', mimeType: 'image/jpeg' } }],
+            },
+          },
+        ],
+      })
+    );
+    (adapter as any).client = { models: { generateContent } };
+
+    const result = await adapter.generate({ prompt: 'a cat' });
+    expect(result.imageDataUri).toBe('data:image/jpeg;base64,abc123');
+  });
+
+  it('defaults to image/png when mimeType is falsy', async () => {
+    const adapter = new GeminiImageAdapter('fake-key');
+    const generateContent = mock(() =>
+      Promise.resolve({
+        candidates: [
+          {
+            content: {
+              parts: [{ inlineData: { data: 'abc123', mimeType: '' } }],
+            },
+          },
+        ],
+      })
+    );
+    (adapter as any).client = { models: { generateContent } };
+
+    const result = await adapter.generate({ prompt: 'a cat' });
+    expect(result.imageDataUri).toBe('data:image/png;base64,abc123');
+  });
 });
