@@ -1,19 +1,21 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Dashboard } from './Dashboard';
 import { createMockStory, createMockStoryWithSurprise } from '../../test/fixtures';
 import { AiConfigProvider } from '../../contexts/AiConfigContext';
-import type { IStoryManifest } from '../../types/story.types';
 
 // --- Mocks ---
 
 vi.mock('../../services/StorageService', () => ({
   StorageService: {
+    getAllManifests: vi.fn(),
     getAllStories: vi.fn(),
     saveStory: vi.fn(),
     deleteStory: vi.fn(),
     getStory: vi.fn(),
     updateStory: vi.fn(),
+    markAsRead: vi.fn(),
+    getStoryPages: vi.fn(),
   },
 }));
 
@@ -27,12 +29,18 @@ vi.mock('../../services/StoryGeneratorService', () => ({
 import { StorageService } from '../../services/StorageService';
 import { StoryGeneratorService } from '../../services/StoryGeneratorService';
 
-const mockGetAllStories = StorageService.getAllStories as ReturnType<typeof vi.fn>;
+const mockGetAllManifests = StorageService.getAllManifests as ReturnType<typeof vi.fn>;
 const mockSaveStory = StorageService.saveStory as ReturnType<typeof vi.fn>;
 const mockDeleteStory = StorageService.deleteStory as ReturnType<typeof vi.fn>;
 const mockGenerateStory = StoryGeneratorService.generateStory as ReturnType<typeof vi.fn>;
 
 // --- Helpers ---
+
+/** Creates a mock manifest-lite from a full story (strips pages) */
+function toLite(story: ReturnType<typeof createMockStory>) {
+  const { pages, ...lite } = story;
+  return lite;
+}
 
 function renderDashboard(onReadStory = vi.fn()) {
   // Mock fetch for AiConfigProvider's /api/providers call
@@ -49,7 +57,7 @@ function renderDashboard(onReadStory = vi.fn()) {
 
 beforeEach(() => {
   vi.restoreAllMocks();
-  mockGetAllStories.mockReset();
+  mockGetAllManifests.mockReset();
   mockSaveStory.mockReset();
   mockDeleteStory.mockReset();
   mockGenerateStory.mockReset();
@@ -62,7 +70,7 @@ describe('Dashboard', () => {
 
   describe('rendering', () => {
     it('shows "Your library is empty" when there are no stories', async () => {
-      mockGetAllStories.mockResolvedValue([]);
+      mockGetAllManifests.mockResolvedValue([]);
       renderDashboard();
 
       await waitFor(() => {
@@ -72,7 +80,7 @@ describe('Dashboard', () => {
 
     it('renders story cards with animal names, title, and date', async () => {
       const story = createMockStory();
-      mockGetAllStories.mockResolvedValue([story]);
+      mockGetAllManifests.mockResolvedValue([toLite(story)]);
       renderDashboard();
 
       await waitFor(() => {
@@ -86,21 +94,24 @@ describe('Dashboard', () => {
       ).toBeInTheDocument();
     });
 
-    it('renders cover image when coverImageUrl exists', async () => {
+    it('renders cover image with lazy loading attributes when coverImageUrl exists', async () => {
       const story = createMockStory({ coverImageUrl: 'http://example.com/cover.png' });
-      mockGetAllStories.mockResolvedValue([story]);
+      mockGetAllManifests.mockResolvedValue([toLite(story)]);
       renderDashboard();
 
       await waitFor(() => {
         const img = screen.getByAltText('Lion vs Tiger');
         expect(img).toBeInTheDocument();
         expect(img).toHaveAttribute('src', 'http://example.com/cover.png');
+        // #4: Lazy loading attributes
+        expect(img).toHaveAttribute('loading', 'lazy');
+        expect(img).toHaveAttribute('decoding', 'async');
       });
     });
 
     it('does not render img when coverImageUrl is missing', async () => {
       const story = createMockStory({ coverImageUrl: undefined });
-      mockGetAllStories.mockResolvedValue([story]);
+      mockGetAllManifests.mockResolvedValue([toLite(story)]);
       renderDashboard();
 
       await waitFor(() => {
@@ -115,7 +126,7 @@ describe('Dashboard', () => {
 
   describe('form', () => {
     it('disables generate button when inputs are empty', async () => {
-      mockGetAllStories.mockResolvedValue([]);
+      mockGetAllManifests.mockResolvedValue([]);
       renderDashboard();
 
       await waitFor(() => {
@@ -128,7 +139,7 @@ describe('Dashboard', () => {
 
     it('enables generate button when both inputs have values', async () => {
       const user = userEvent.setup();
-      mockGetAllStories.mockResolvedValue([]);
+      mockGetAllManifests.mockResolvedValue([]);
       renderDashboard();
 
       await waitFor(() => {
@@ -144,7 +155,7 @@ describe('Dashboard', () => {
 
     it('disables inputs during generation', async () => {
       const user = userEvent.setup();
-      mockGetAllStories.mockResolvedValue([]);
+      mockGetAllManifests.mockResolvedValue([]);
       // generateStory never resolves, keeping isGenerating true
       mockGenerateStory.mockReturnValue(new Promise(() => {}));
       renderDashboard();
@@ -166,10 +177,10 @@ describe('Dashboard', () => {
       });
     });
 
-    it('calls StoryGeneratorService.generateStory on form submission', async () => {
+    it('calls StoryGeneratorService.generateStory with progress callback on form submission', async () => {
       const user = userEvent.setup();
       const newStory = createMockStory();
-      mockGetAllStories.mockResolvedValue([]);
+      mockGetAllManifests.mockResolvedValue([]);
       mockGenerateStory.mockResolvedValue(newStory);
       mockSaveStory.mockResolvedValue(undefined);
 
@@ -188,13 +199,14 @@ describe('Dashboard', () => {
           expect.objectContaining({ llmProvider: expect.any(String) }),
           'Lion',
           'Tiger',
+          expect.any(Function), // #7: progress callback
         );
       });
     });
 
     it('shows alert on generation error', async () => {
       const user = userEvent.setup();
-      mockGetAllStories.mockResolvedValue([]);
+      mockGetAllManifests.mockResolvedValue([]);
       mockGenerateStory.mockRejectedValue(new Error('API failed'));
       vi.spyOn(console, 'error').mockImplementation(() => {});
       const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
@@ -213,6 +225,32 @@ describe('Dashboard', () => {
         expect(alertSpy).toHaveBeenCalledWith('Failed to generate story.');
       });
     });
+
+    it('optimistically appends new story after generation (#13)', async () => {
+      const user = userEvent.setup();
+      const newStory = createMockStory();
+      mockGetAllManifests.mockResolvedValue([]);
+      mockGenerateStory.mockResolvedValue(newStory);
+      mockSaveStory.mockResolvedValue(undefined);
+
+      renderDashboard();
+
+      await waitFor(() => {
+        expect(screen.getByText(/your library is empty/i)).toBeInTheDocument();
+      });
+
+      await user.type(screen.getByPlaceholderText(/animal a/i), 'Lion');
+      await user.type(screen.getByPlaceholderText(/animal b/i), 'Tiger');
+      await user.click(screen.getByRole('button', { name: /generate story/i }));
+
+      // Story should appear in the UI via optimistic append
+      await waitFor(() => {
+        expect(screen.getByText(newStory.metadata.title)).toBeInTheDocument();
+      });
+
+      // getAllManifests should have been called only once (initial load), not after generation
+      expect(mockGetAllManifests).toHaveBeenCalledTimes(1);
+    });
   });
 
   // ---- Generation Overlay ----
@@ -220,7 +258,7 @@ describe('Dashboard', () => {
   describe('generation overlay', () => {
     it('shows overlay during generation', async () => {
       const user = userEvent.setup();
-      mockGetAllStories.mockResolvedValue([]);
+      mockGetAllManifests.mockResolvedValue([]);
       mockGenerateStory.mockReturnValue(new Promise(() => {}));
       renderDashboard();
 
@@ -239,7 +277,7 @@ describe('Dashboard', () => {
 
     it('shows animal names in overlay', async () => {
       const user = userEvent.setup();
-      mockGetAllStories.mockResolvedValue([]);
+      mockGetAllManifests.mockResolvedValue([]);
       mockGenerateStory.mockReturnValue(new Promise(() => {}));
       renderDashboard();
 
@@ -259,6 +297,26 @@ describe('Dashboard', () => {
       expect(versus).toHaveTextContent(/elephant/i);
       expect(versus).toHaveTextContent(/rhino/i);
     });
+
+    it('shows a progress bar with role="progressbar" (#7)', async () => {
+      const user = userEvent.setup();
+      mockGetAllManifests.mockResolvedValue([]);
+      mockGenerateStory.mockReturnValue(new Promise(() => {}));
+      renderDashboard();
+
+      await waitFor(() => {
+        expect(screen.getByText(/your library is empty/i)).toBeInTheDocument();
+      });
+
+      await user.type(screen.getByPlaceholderText(/animal a/i), 'Lion');
+      await user.type(screen.getByPlaceholderText(/animal b/i), 'Tiger');
+      await user.click(screen.getByRole('button', { name: /generate story/i }));
+
+      await waitFor(() => {
+        const bar = screen.getByRole('progressbar');
+        expect(bar).toBeInTheDocument();
+      });
+    });
   });
 
   // ---- Delete ----
@@ -267,7 +325,7 @@ describe('Dashboard', () => {
     it('optimistically removes story from UI immediately', async () => {
       const user = userEvent.setup();
       const story = createMockStory();
-      mockGetAllStories.mockResolvedValue([story]);
+      mockGetAllManifests.mockResolvedValue([toLite(story)]);
       // deleteStory never resolves so we can test optimistic removal
       mockDeleteStory.mockReturnValue(new Promise(() => {}));
       vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -289,7 +347,7 @@ describe('Dashboard', () => {
     it('reloads stories when delete fails', async () => {
       const user = userEvent.setup();
       const story = createMockStory();
-      mockGetAllStories.mockResolvedValue([story]);
+      mockGetAllManifests.mockResolvedValue([toLite(story)]);
       mockDeleteStory.mockRejectedValue(new Error('Delete failed'));
       vi.spyOn(console, 'error').mockImplementation(() => {});
       vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -301,14 +359,14 @@ describe('Dashboard', () => {
       });
 
       // Record calls before delete
-      const callsBefore = mockGetAllStories.mock.calls.length;
+      const callsBefore = mockGetAllManifests.mock.calls.length;
 
       const deleteBtn = screen.getByRole('button', { name: /delete story/i });
       await user.click(deleteBtn);
 
       // After delete fails, loadStories is called again (at least one more time)
       await waitFor(() => {
-        expect(mockGetAllStories.mock.calls.length).toBeGreaterThan(callsBefore);
+        expect(mockGetAllManifests.mock.calls.length).toBeGreaterThan(callsBefore);
       });
     });
   });
@@ -318,7 +376,7 @@ describe('Dashboard', () => {
   describe('winner reveal', () => {
     it('shows "Reveal Winner" button initially', async () => {
       const story = createMockStory();
-      mockGetAllStories.mockResolvedValue([story]);
+      mockGetAllManifests.mockResolvedValue([toLite(story)]);
       renderDashboard();
 
       await waitFor(() => {
@@ -329,7 +387,7 @@ describe('Dashboard', () => {
     it('toggles to show winner name on click', async () => {
       const user = userEvent.setup();
       const story = createMockStory(); // winnerId is 'animalA' => Lion
-      mockGetAllStories.mockResolvedValue([story]);
+      mockGetAllManifests.mockResolvedValue([toLite(story)]);
       renderDashboard();
 
       await waitFor(() => {
@@ -346,7 +404,7 @@ describe('Dashboard', () => {
     it('shows "None (Surprise!)" for surprise ending', async () => {
       const user = userEvent.setup();
       const story = createMockStoryWithSurprise();
-      mockGetAllStories.mockResolvedValue([story]);
+      mockGetAllManifests.mockResolvedValue([toLite(story)]);
       renderDashboard();
 
       await waitFor(() => {
@@ -365,7 +423,7 @@ describe('Dashboard', () => {
 
   describe('advanced options', () => {
     it('shows LLM provider selector when multiple providers available', async () => {
-      mockGetAllStories.mockResolvedValue([]);
+      mockGetAllManifests.mockResolvedValue([]);
       renderDashboard();
 
       await waitFor(() => {
@@ -381,7 +439,7 @@ describe('Dashboard', () => {
     it('updates config when selector changes', async () => {
       const user = userEvent.setup();
       const newStory = createMockStory();
-      mockGetAllStories.mockResolvedValue([]);
+      mockGetAllManifests.mockResolvedValue([]);
       mockGenerateStory.mockResolvedValue(newStory);
       mockSaveStory.mockResolvedValue(undefined);
 
@@ -404,6 +462,7 @@ describe('Dashboard', () => {
           expect.objectContaining({ llmProvider: 'openai' }),
           'Lion',
           'Tiger',
+          expect.any(Function),
         );
       });
     });

@@ -76,7 +76,7 @@ describe('AnthropicLlmAdapter', () => {
       ]);
       await adapter.generate(objectSchema);
       const callArgs = create.mock.calls[0][0];
-      expect(callArgs.model).toBe('claude-opus-4-6');
+      expect(callArgs.model).toBe('claude-sonnet-4-20250514');
     });
 
     it('uses request.model when provided', async () => {

@@ -1,12 +1,20 @@
-import { v4 as uuidv4 } from 'uuid';
+import pLimit from 'p-limit';
 import type { AiConfig } from '../contexts/AiConfigContext';
 import { IStoryManifest, IBattleOutcome, IAnimalEntity, IPageContent } from '../types/story.types';
 import { LlmService } from './LlmService';
 import { ImageService } from './ImageService';
 
+type ProgressCallback = (step: string, pct: number) => void;
+
 export class StoryGeneratorService {
-    static async generateStory(config: AiConfig, animalAQuery: string, animalBQuery: string): Promise<IStoryManifest> {
+    static async generateStory(
+        config: AiConfig,
+        animalAQuery: string,
+        animalBQuery: string,
+        onProgress?: ProgressCallback
+    ): Promise<IStoryManifest> {
         // 1. Fetch Biology Profiles
+        onProgress?.('Researching animal profiles...', 5);
         const [profileA, profileB] = await Promise.all([
             LlmService.getAnimalProfile(config, animalAQuery),
             LlmService.getAnimalProfile(config, animalBQuery)
@@ -19,23 +27,6 @@ export class StoryGeneratorService {
         const isSurpriseEnding = this.rollForSurpriseEnding();
         const endingType = this.determineEndingType(isSurpriseEnding);
         const winnerId = isSurpriseEnding ? 'none' : (Math.random() > 0.5 ? 'animalA' : 'animalB');
-
-        // 3. Generate Battle Outcome and Checklist from LLM
-        const outcomeData = await LlmService.getShowdownAndOutcome(
-            config,
-            animalA,
-            animalB,
-            isSurpriseEnding,
-            endingType,
-            winnerId
-        );
-
-        const outcome: IBattleOutcome = {
-            winnerId,
-            logicalReasoning: outcomeData.logicalReasoning,
-            isSurpriseEnding,
-            endingType
-        };
 
         const aspects = [
             'Scientific Classification',
@@ -52,13 +43,33 @@ export class StoryGeneratorService {
             'Overall Threat Level'
         ];
 
-        // 4. Generate Page Descriptions from LLM
-        const [aspectsA, aspectsB] = await Promise.all([
+        // 3. Run showdown, both aspects, AND cover image in parallel
+        onProgress?.('Simulating the showdown...', 15);
+        const coverPrompt = `A dramatic, dynamic children's book cover illustration showing a ${animalAQuery} and a ${animalBQuery} facing each other in an epic standoff. Both animals must be fully visible from head to tail. The scene should be intense and exciting, with both animals looking powerful and ready for battle. Bold, vibrant colors with an action-packed composition. No text in the image.`;
+
+        const [outcomeData, aspectsA, aspectsB, coverImageUrl] = await Promise.all([
+            LlmService.getShowdownAndOutcome(
+                config,
+                animalA,
+                animalB,
+                isSurpriseEnding,
+                endingType,
+                winnerId
+            ),
             LlmService.getAspectsForAnimal(config, animalA, aspects),
-            LlmService.getAspectsForAnimal(config, animalB, aspects)
+            LlmService.getAspectsForAnimal(config, animalB, aspects),
+            ImageService.generateImage(config, coverPrompt, { aspectRatio: '3:2' }),
         ]);
 
-        const rawPages = [];
+        const outcome: IBattleOutcome = {
+            winnerId,
+            logicalReasoning: outcomeData.logicalReasoning,
+            isSurpriseEnding,
+            endingType
+        };
+
+        // 4. Generate Page Descriptions from LLM
+        const rawPages: IPageContent[] = [];
 
         // Combine aspects into page pairs
         for (let i = 0; i < 12; i++) {
@@ -101,31 +112,26 @@ export class StoryGeneratorService {
             isLeftPage: false
         });
 
-        // 5. Generate Images Concurrently (Chunked to prevent ratelimits)
-        const chunkedImageGen = async (pages: IPageContent[], chunkSize: number = 4) => {
-            const results = [];
-            for (let i = 0; i < pages.length; i += chunkSize) {
-                const chunk = pages.slice(i, i + chunkSize);
-                console.log(`Generating images for chunk ${i / chunkSize + 1}`);
-                const chunkResults = await Promise.all(chunk.map(async p => {
-                    const imageUrl = await ImageService.generateImage(config, p.visualPrompt, { aspectRatio: '4:3' });
-                    return { ...p, imageUrl };
-                }));
-                results.push(...chunkResults);
-            }
-            return results;
-        };
+        // 5. Generate Images with p-limit concurrency limiter
+        onProgress?.('Illustrating pages...', 25);
+        const limit = pLimit(6);
+        let completed = 0;
+        const total = rawPages.length;
+        const finalPages = await Promise.all(
+            rawPages.map(p => limit(async () => {
+                const imageUrl = await ImageService.generateImage(config, p.visualPrompt, { aspectRatio: '4:3' });
+                completed++;
+                onProgress?.(`Illustrating page ${completed} of ${total}...`, 25 + (completed / total) * 70);
+                return { ...p, imageUrl };
+            }))
+        );
 
-        const finalPages = await chunkedImageGen(rawPages, 4);
-
-        // 6. Generate Cover Image
-        console.log('Generating cover image...');
-        const coverPrompt = `A dramatic, dynamic children's book cover illustration showing a ${animalAQuery} and a ${animalBQuery} facing each other in an epic standoff. Both animals must be fully visible from head to tail. The scene should be intense and exciting, with both animals looking powerful and ready for battle. Bold, vibrant colors with an action-packed composition. No text in the image.`;
-        const coverImageUrl = await ImageService.generateImage(config, coverPrompt, { aspectRatio: '3:2' });
+        // 6. Save
+        onProgress?.('Saving your story...', 98);
 
         const manifest: IStoryManifest = {
             metadata: {
-                id: uuidv4(),
+                id: crypto.randomUUID(),
                 title: `Who Would Win? ${animalAQuery} vs. ${animalBQuery}`,
                 createdAt: Date.now(),
                 hasBeenRead: false

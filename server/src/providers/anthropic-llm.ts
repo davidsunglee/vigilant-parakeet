@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type { ILlmProvider, LlmRequest, LlmResponse } from './types';
 
-const DEFAULT_MODEL = 'claude-opus-4-6';
+const DEFAULT_MODEL = 'claude-sonnet-4-20250514';
 const TOOL_NAME = 'structured_output';
 
 export class AnthropicLlmAdapter implements ILlmProvider {
