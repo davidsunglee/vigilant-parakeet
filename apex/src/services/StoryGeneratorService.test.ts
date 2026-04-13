@@ -8,6 +8,7 @@ vi.mock('./LlmService', () => ({
         getAnimalProfile: vi.fn(),
         getAspectsForAnimal: vi.fn(),
         getShowdownAndOutcome: vi.fn(),
+        getAnimalVisualDescriptions: vi.fn(),
     },
 }));
 
@@ -75,6 +76,25 @@ const mockOutcomeData = {
     outcomeText: { bodyText: 'Lion wins!', visualPrompt: 'Lion stands victorious' },
 };
 
+const mockVisualAnchor = {
+    animalA: {
+        artStyle: 'soft watercolor',
+        speciesDescription: 'adult male African lion',
+        bodyColors: 'golden-tawny fur',
+        markings: 'dark brown mane',
+        faceShape: 'broad square jaw',
+        fullDescription: 'A soft watercolor illustration of an adult male African lion with golden-tawny fur and a dark brown mane.',
+    },
+    animalB: {
+        artStyle: 'soft watercolor',
+        speciesDescription: 'adult male Bengal tiger',
+        bodyColors: 'orange fur with white underbelly',
+        markings: 'black stripes',
+        faceShape: 'round face with prominent whiskers',
+        fullDescription: 'A soft watercolor illustration of an adult male Bengal tiger with orange fur, white underbelly, and black stripes.',
+    },
+};
+
 function setupDefaultMocks() {
     vi.mocked(LlmService.getAnimalProfile)
         .mockResolvedValueOnce(mockProfileA)
@@ -87,6 +107,8 @@ function setupDefaultMocks() {
         .mockResolvedValueOnce(makeMockAspects('Tiger'));
 
     vi.mocked(ImageService.generateImage).mockResolvedValue('data:image/png;base64,mockimg');
+
+    vi.mocked(LlmService.getAnimalVisualDescriptions).mockResolvedValue(mockVisualAnchor);
 }
 
 describe('StoryGeneratorService', () => {
@@ -320,11 +342,14 @@ describe('StoryGeneratorService', () => {
         // First call: researching profiles
         expect(progressCalls[0]).toEqual(['Researching animal profiles...', 5]);
 
-        // Second call: simulating the showdown
-        expect(progressCalls[1]).toEqual(['Simulating the showdown...', 15]);
+        // Second call: designing animal illustrations
+        expect(progressCalls[1]).toEqual(['Designing animal illustrations...', 10]);
 
-        // Third call: illustrating pages
-        expect(progressCalls[2]).toEqual(['Illustrating pages...', 25]);
+        // Third call: simulating the showdown
+        expect(progressCalls[2]).toEqual(['Simulating the showdown...', 15]);
+
+        // Fourth call: illustrating pages
+        expect(progressCalls[3]).toEqual(['Illustrating pages...', 25]);
 
         // Per-page progress calls (26 pages)
         const illustratingCalls = progressCalls.filter(([step]) => /^Illustrating page \d+/.test(step));
@@ -345,5 +370,71 @@ describe('StoryGeneratorService', () => {
         // Should not throw when no callback is provided
         const manifest = await StoryGeneratorService.generateStory(mockConfig, 'Lion', 'Tiger');
         expect(manifest).toBeDefined();
+    });
+
+    // ── Visual Anchor Integration Tests ──────────────────────────────
+
+    it('calls getAnimalVisualDescriptions once with the correct animals', async () => {
+        setupDefaultMocks();
+        await StoryGeneratorService.generateStory(mockConfig, 'Lion', 'Tiger');
+        expect(LlmService.getAnimalVisualDescriptions).toHaveBeenCalledOnce();
+        expect(LlmService.getAnimalVisualDescriptions).toHaveBeenCalledWith(
+            mockConfig,
+            expect.objectContaining({ id: 'animalA', commonName: 'Lion' }),
+            expect.objectContaining({ id: 'animalB', commonName: 'Tiger' }),
+        );
+    });
+
+    it('threads visualAnchor.animalA to getAspectsForAnimal for animal A', async () => {
+        setupDefaultMocks();
+        await StoryGeneratorService.generateStory(mockConfig, 'Lion', 'Tiger');
+        const calls = vi.mocked(LlmService.getAspectsForAnimal).mock.calls;
+        // First call is for animalA
+        expect(calls[0][3]).toEqual(mockVisualAnchor.animalA);
+    });
+
+    it('threads visualAnchor.animalB to getAspectsForAnimal for animal B', async () => {
+        setupDefaultMocks();
+        await StoryGeneratorService.generateStory(mockConfig, 'Lion', 'Tiger');
+        const calls = vi.mocked(LlmService.getAspectsForAnimal).mock.calls;
+        // Second call is for animalB
+        expect(calls[1][3]).toEqual(mockVisualAnchor.animalB);
+    });
+
+    it('threads visualAnchor to getShowdownAndOutcome', async () => {
+        setupDefaultMocks();
+        await StoryGeneratorService.generateStory(mockConfig, 'Lion', 'Tiger');
+        const calls = vi.mocked(LlmService.getShowdownAndOutcome).mock.calls;
+        expect(calls[0][6]).toEqual(mockVisualAnchor);
+    });
+
+    it('passes styleAnchor to page image calls but NOT to the cover', async () => {
+        setupDefaultMocks();
+        const imageCalls: Array<[unknown, string, unknown]> = [];
+        vi.mocked(ImageService.generateImage).mockImplementation(async (_config, prompt, options) => {
+            imageCalls.push([_config, prompt, options]);
+            return 'data:image/png;base64,mockimg';
+        });
+
+        await StoryGeneratorService.generateStory(mockConfig, 'Lion', 'Tiger');
+
+        // First call is the cover (in the parallel batch) — no styleAnchor
+        const coverOptions = imageCalls[0][2] as Record<string, unknown>;
+        expect(coverOptions).not.toHaveProperty('styleAnchor');
+
+        // Page image calls (indices 1-26) should have styleAnchor
+        for (let i = 1; i < imageCalls.length; i++) {
+            const pageOptions = imageCalls[i][2] as Record<string, unknown>;
+            expect(pageOptions).toHaveProperty('styleAnchor');
+            expect(typeof pageOptions.styleAnchor).toBe('string');
+            expect(pageOptions.styleAnchor as string).toContain('soft watercolor');
+        }
+    });
+
+    it('includes visualAnchor in the returned manifest', async () => {
+        setupDefaultMocks();
+        const manifest = await StoryGeneratorService.generateStory(mockConfig, 'Lion', 'Tiger');
+        expect(manifest.visualAnchor).toBeDefined();
+        expect(manifest.visualAnchor).toEqual(mockVisualAnchor);
     });
 });

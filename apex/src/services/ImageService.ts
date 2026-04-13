@@ -4,10 +4,12 @@ export class ImageService {
     static async generateImage(
         config: AiConfig,
         prompt: string,
-        options?: { aspectRatio?: string; resolution?: string },
+        options?: { aspectRatio?: string; resolution?: string; styleAnchor?: string },
         retries = 3
     ): Promise<string> {
-        const styledPrompt = `Generate an illustration in a children's educational book style. Show the full subject in frame with space around it. Do not crop the animal's head, tail, or limbs. Subject: ${prompt}`;
+        const styledPrompt = options?.styleAnchor
+            ? `${options.styleAnchor} Show the full subject in frame with space around it. Do not crop the animal's head, tail, or limbs. Subject: ${prompt}`
+            : `Generate an illustration in a children's educational book style. Show the full subject in frame with space around it. Do not crop the animal's head, tail, or limbs. Subject: ${prompt}`;
 
         for (let attempt = 0; attempt < retries; attempt++) {
             try {
