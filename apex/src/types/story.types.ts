@@ -49,6 +49,20 @@ export interface IStoryMetadata {
   readonly hasBeenRead: boolean;
 }
 
+export interface IAnimalVisualDescription {
+  readonly artStyle: string;
+  readonly speciesDescription: string;
+  readonly bodyColors: string;
+  readonly markings: string;
+  readonly faceShape: string;
+  readonly fullDescription: string;
+}
+
+export interface IStoryVisualAnchor {
+  readonly animalA: IAnimalVisualDescription;
+  readonly animalB: IAnimalVisualDescription;
+}
+
 export interface IStoryManifest {
   readonly metadata: IStoryMetadata;
   readonly animalA: IAnimalEntity;
@@ -57,6 +71,7 @@ export interface IStoryManifest {
   readonly pages: IPageContent[]; // Fixed length array (32 pages ideally)
   readonly checklist: ITraitChecklist;
   readonly outcome: IBattleOutcome;
+  readonly visualAnchor?: IStoryVisualAnchor;
 }
 
 /**

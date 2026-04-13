@@ -1,6 +1,6 @@
 import pLimit from 'p-limit';
 import type { AiConfig } from '../contexts/AiConfigContext';
-import { IStoryManifest, IBattleOutcome, IAnimalEntity, IPageContent } from '../types/story.types';
+import { IStoryManifest, IBattleOutcome, IAnimalEntity, IPageContent, IStoryVisualAnchor } from '../types/story.types';
 import { LlmService } from './LlmService';
 import { ImageService } from './ImageService';
 
@@ -22,6 +22,11 @@ export class StoryGeneratorService {
 
         const animalA: IAnimalEntity = { id: 'animalA', commonName: animalAQuery, ...profileA };
         const animalB: IAnimalEntity = { id: 'animalB', commonName: animalBQuery, ...profileB };
+
+        // 1b. Generate canonical visual descriptions for consistent imagery
+        onProgress?.('Designing animal illustrations...', 10);
+        const visualAnchor = await LlmService.getAnimalVisualDescriptions(config, animalA, animalB);
+        const artStyleAnchor = `Generate an illustration in the following style: ${visualAnchor.animalA.artStyle}. This is a children's educational book illustration.`;
 
         // 2. Determine Outcome Type internally
         const isSurpriseEnding = this.rollForSurpriseEnding();
@@ -54,10 +59,11 @@ export class StoryGeneratorService {
                 animalB,
                 isSurpriseEnding,
                 endingType,
-                winnerId
+                winnerId,
+                visualAnchor
             ),
-            LlmService.getAspectsForAnimal(config, animalA, aspects),
-            LlmService.getAspectsForAnimal(config, animalB, aspects),
+            LlmService.getAspectsForAnimal(config, animalA, aspects, visualAnchor.animalA),
+            LlmService.getAspectsForAnimal(config, animalB, aspects, visualAnchor.animalB),
             ImageService.generateImage(config, coverPrompt, { aspectRatio: '3:2' }),
         ]);
 
@@ -119,7 +125,7 @@ export class StoryGeneratorService {
         const total = rawPages.length;
         const finalPages = await Promise.all(
             rawPages.map(p => limit(async () => {
-                const imageUrl = await ImageService.generateImage(config, p.visualPrompt, { aspectRatio: '4:3' });
+                const imageUrl = await ImageService.generateImage(config, p.visualPrompt, { aspectRatio: '4:3', styleAnchor: artStyleAnchor });
                 completed++;
                 onProgress?.(`Illustrating page ${completed} of ${total}...`, 25 + (completed / total) * 70);
                 return { ...p, imageUrl };
@@ -141,7 +147,8 @@ export class StoryGeneratorService {
             coverImageUrl,
             checklist: outcomeData.checklist,
             outcome,
-            pages: finalPages
+            pages: finalPages,
+            visualAnchor,
         };
 
         return manifest;
