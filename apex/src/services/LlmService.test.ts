@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { LlmService } from './LlmService';
 import type { AiConfig } from '../contexts/AiConfigContext';
+import type { IAnimalVisualDescription, IStoryVisualAnchor } from '../types/story.types';
 
 const mockConfig: AiConfig = {
     llmProvider: 'anthropic',
@@ -266,6 +267,121 @@ describe('LlmService', () => {
             expect(body.prompt).toContain('Is it a surprise ending? true');
             expect(body.prompt).toContain('The Bigger Fish');
         });
+
+        it('injects both animal descriptions in fixed order when visualAnchor is provided', async () => {
+            global.fetch = mockFetchSuccess(mockReturnData);
+
+            const visualAnchor: IStoryVisualAnchor = {
+                animalA: {
+                    artStyle: 'soft watercolor',
+                    speciesDescription: 'adult male African lion',
+                    bodyColors: 'golden-tawny fur',
+                    markings: 'dark brown mane',
+                    faceShape: 'broad square jaw',
+                    fullDescription: 'A soft watercolor illustration of an adult male African lion with golden-tawny fur.',
+                },
+                animalB: {
+                    artStyle: 'soft watercolor',
+                    speciesDescription: 'adult male Bengal tiger',
+                    bodyColors: 'orange fur',
+                    markings: 'black stripes',
+                    faceShape: 'round face',
+                    fullDescription: 'A soft watercolor illustration of an adult male Bengal tiger with orange fur and black stripes.',
+                },
+            };
+
+            await LlmService.getShowdownAndOutcome(
+                mockConfig, animalA, animalB, false, 'Standard Victory', 'animalA', visualAnchor
+            );
+
+            const body = JSON.parse((fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body);
+            expect(body.prompt).toContain('Visual consistency instructions');
+            // Both descriptions present
+            expect(body.prompt).toContain('A soft watercolor illustration of an adult male African lion with golden-tawny fur.');
+            expect(body.prompt).toContain('A soft watercolor illustration of an adult male Bengal tiger with orange fur and black stripes.');
+            // Animal A appears before Animal B (fixed order)
+            const indexA = body.prompt.indexOf('adult male African lion with golden-tawny fur');
+            const indexB = body.prompt.indexOf('adult male Bengal tiger with orange fur');
+            expect(indexA).toBeLessThan(indexB);
+        });
+    });
+
+    // ── getAnimalVisualDescriptions ──────────────────────────────────
+
+    describe('getAnimalVisualDescriptions', () => {
+        const animalA = {
+            id: 'animalA', commonName: 'Lion', scientificName: 'Panthera leo',
+            habitat: 'Savannah', stats: { weight: '190 kg', length: '2.5 m', speed: '80 km/h' },
+        };
+        const animalB = {
+            id: 'animalB', commonName: 'Tiger', scientificName: 'Panthera tigris',
+            habitat: 'Jungle', stats: { weight: '220 kg', length: '3.0 m', speed: '65 km/h' },
+        };
+
+        const mockVisualData = {
+            artStyle: 'soft watercolor',
+            animalA: {
+                speciesDescription: 'adult male African lion',
+                bodyColors: 'golden-tawny fur',
+                markings: 'dark brown mane',
+                faceShape: 'broad square jaw',
+                fullDescription: 'A soft watercolor illustration of an adult male African lion.',
+            },
+            animalB: {
+                speciesDescription: 'adult male Bengal tiger',
+                bodyColors: 'orange fur with white underbelly',
+                markings: 'black stripes',
+                faceShape: 'round face',
+                fullDescription: 'A soft watercolor illustration of an adult male Bengal tiger.',
+            },
+        };
+
+        it('returns correctly shaped IStoryVisualAnchor with artStyle copied to both animals', async () => {
+            global.fetch = mockFetchSuccess(mockVisualData);
+
+            const result = await LlmService.getAnimalVisualDescriptions(mockConfig, animalA, animalB);
+
+            expect(result.animalA.artStyle).toBe('soft watercolor');
+            expect(result.animalB.artStyle).toBe('soft watercolor');
+            expect(result.animalA.speciesDescription).toBe('adult male African lion');
+            expect(result.animalB.speciesDescription).toBe('adult male Bengal tiger');
+            expect(result.animalA.fullDescription).toBeDefined();
+            expect(typeof result.animalA.fullDescription).toBe('string');
+            expect(result.animalB.fullDescription).toBeDefined();
+            expect(typeof result.animalB.fullDescription).toBe('string');
+        });
+
+        it('includes both animal names in the prompt', async () => {
+            global.fetch = mockFetchSuccess(mockVisualData);
+
+            await LlmService.getAnimalVisualDescriptions(mockConfig, animalA, animalB);
+
+            const body = JSON.parse((fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body);
+            expect(body.prompt).toContain('Lion');
+            expect(body.prompt).toContain('Tiger');
+        });
+
+        it('sends a system prompt for the illustrator persona', async () => {
+            global.fetch = mockFetchSuccess(mockVisualData);
+
+            await LlmService.getAnimalVisualDescriptions(mockConfig, animalA, animalB);
+
+            const body = JSON.parse((fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body);
+            expect(body.systemPrompt).toBeDefined();
+            expect(body.systemPrompt).toContain('illustrator');
+        });
+
+        it('sends response schema with required fields', async () => {
+            global.fetch = mockFetchSuccess(mockVisualData);
+
+            await LlmService.getAnimalVisualDescriptions(mockConfig, animalA, animalB);
+
+            const body = JSON.parse((fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body);
+            expect(body.responseSchema.type).toBe('object');
+            expect(body.responseSchema.properties).toHaveProperty('artStyle');
+            expect(body.responseSchema.properties).toHaveProperty('animalA');
+            expect(body.responseSchema.properties).toHaveProperty('animalB');
+        });
     });
 
     // ── getAspectsForAnimal ──────────────────────────────────────────
@@ -317,6 +433,28 @@ describe('LlmService', () => {
             expect(body.responseSchema.items.required).toEqual(
                 expect.arrayContaining(['aspectName', 'bodyText', 'visualPrompt'])
             );
+        });
+
+        it('injects visual description into the prompt when provided', async () => {
+            const mockAspectData = [
+                { aspectName: 'Hunting & Diet', bodyText: 'Eagles hunt.', visualPrompt: 'Eagle hunting' },
+            ];
+            global.fetch = mockFetchSuccess(mockAspectData);
+
+            const visualDescription: IAnimalVisualDescription = {
+                artStyle: 'soft watercolor',
+                speciesDescription: 'adult golden eagle',
+                bodyColors: 'dark brown feathers',
+                markings: 'golden nape',
+                faceShape: 'sharp hooked beak',
+                fullDescription: 'A soft watercolor illustration of an adult golden eagle with dark brown feathers and a golden nape.',
+            };
+
+            await LlmService.getAspectsForAnimal(mockConfig, animal, ['Hunting & Diet'], visualDescription);
+
+            const body = JSON.parse((fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body);
+            expect(body.prompt).toContain('Visual consistency instructions');
+            expect(body.prompt).toContain('A soft watercolor illustration of an adult golden eagle with dark brown feathers and a golden nape.');
         });
     });
 });

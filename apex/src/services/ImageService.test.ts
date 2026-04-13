@@ -121,6 +121,33 @@ describe('ImageService', () => {
         expect(result).toBe('');
     });
 
+    it('uses styleAnchor instead of generic prefix when provided', async () => {
+        global.fetch = vi.fn().mockResolvedValue({
+            ok: true,
+            json: () => Promise.resolve({ imageDataUri: 'data:img' }),
+        });
+
+        await ImageService.generateImage(mockConfig, 'A lion roaring', {
+            styleAnchor: "Soft watercolor children's book illustration style.",
+        });
+
+        const body = JSON.parse((fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body);
+        expect(body.prompt).toContain("Soft watercolor children's book illustration style.");
+        expect(body.prompt).not.toContain("children's educational book style");
+    });
+
+    it('uses generic children\'s book prefix when styleAnchor is not provided', async () => {
+        global.fetch = vi.fn().mockResolvedValue({
+            ok: true,
+            json: () => Promise.resolve({ imageDataUri: 'data:img' }),
+        });
+
+        await ImageService.generateImage(mockConfig, 'A lion roaring');
+
+        const body = JSON.parse((fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body);
+        expect(body.prompt).toContain("children's educational book style");
+    });
+
     // Retry logic tests
     describe('retry logic', () => {
         it('retries on 429 status with exponential backoff', async () => {
