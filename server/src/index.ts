@@ -4,6 +4,8 @@ import { ProviderRegistry } from './registry';
 import { GeminiLlmAdapter } from './providers/gemini-llm';
 import { AnthropicLlmAdapter } from './providers/anthropic-llm';
 import { GeminiImageAdapter } from './providers/gemini-image';
+import { OpenAiLlmAdapter } from './providers/openai-llm';
+import { OpenAiImageAdapter } from './providers/openai-image';
 import { llmRoute } from './routes/llm';
 import { imageRoute } from './routes/image';
 import { providersRoute } from './routes/providers';
@@ -27,6 +29,16 @@ if (anthropicKey) {
   console.log('Registered Anthropic LLM provider');
 } else {
   console.warn('ANTHROPIC_API_KEY not set — Anthropic provider disabled');
+}
+
+const openaiKey = process.env.OPENAI_API_KEY;
+
+if (openaiKey) {
+  registry.registerLlm('openai', new OpenAiLlmAdapter(openaiKey));
+  registry.registerImage('openai', new OpenAiImageAdapter(openaiKey));
+  console.log('Registered OpenAI providers (LLM + Image)');
+} else {
+  console.warn('OPENAI_API_KEY not set — OpenAI providers disabled');
 }
 
 const app = new Elysia()
