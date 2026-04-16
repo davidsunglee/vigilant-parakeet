@@ -120,11 +120,16 @@ export class StoryGeneratorService {
 
         // 5. Generate Images with p-limit concurrency limiter
         onProgress?.('Illustrating pages...', 25);
-        const limit = pLimit(6);
+        const concurrency = config.imageProvider === 'openai' ? 2 : 6;
+        const interRequestDelay = config.imageProvider === 'openai' ? 15_000 : 0;
+        const limit = pLimit(concurrency);
         let completed = 0;
         const total = rawPages.length;
         const finalPages = await Promise.all(
             rawPages.map(p => limit(async () => {
+                if (interRequestDelay && completed > 0) {
+                    await new Promise(r => setTimeout(r, interRequestDelay));
+                }
                 const imageUrl = await ImageService.generateImage(config, p.visualPrompt, { aspectRatio: '4:3', styleAnchor: artStyleAnchor });
                 completed++;
                 onProgress?.(`Illustrating page ${completed} of ${total}...`, 25 + (completed / total) * 70);

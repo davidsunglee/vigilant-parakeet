@@ -20,6 +20,17 @@ const GENERATION_MESSAGES = [
 // Example animal list for simple auto-complete/search proxy
 const commonAnimals = ['Lion', 'Tiger', 'Polar Bear', 'Grizzly Bear', 'Great White Shark', 'Killer Whale', 'Komodo Dragon', 'King Cobra', 'Hippopotamus', 'Rhinoceros', 'Tarantula', 'Scorpion', 'T-Rex', 'Velociraptor'];
 
+const IMAGE_MODELS: Record<string, { value: string; label: string }[]> = {
+    gemini: [
+        { value: 'gemini-3.1-flash-image-preview', label: 'Gemini 3.1 Flash' },
+        { value: 'gemini-2.5-flash-image', label: 'Gemini 2.5 Flash' },
+    ],
+    openai: [
+        { value: 'gpt-image-1', label: 'GPT Image 1' },
+        { value: 'dall-e-3', label: 'DALL-E 3' },
+    ],
+};
+
 // #6: Memoized StoryCard component
 const StoryCard = React.memo<{
     story: IStoryManifestLite;
@@ -238,18 +249,36 @@ export const Dashboard: React.FC<{ onReadStory: (id: string) => void }> = ({ onR
                                 </select>
                             </div>
                         )}
-                        <div className="provider-selector">
-                            <label htmlFor="image-model">Image Model:</label>
-                            <select
-                                id="image-model"
-                                value={config.imageModel ?? 'gemini-3.1-flash-image-preview'}
-                                onChange={(e) => setConfig({ ...config, imageModel: e.target.value })}
-                                disabled={isGenerating}
-                            >
-                                <option value="gemini-3.1-flash-image-preview">Gemini 3.1 Flash</option>
-                                <option value="gemini-2.5-flash-image">Gemini 2.5 Flash</option>
-                            </select>
-                        </div>
+                        {availableProviders.image.length > 1 && (
+                            <div className="provider-selector">
+                                <label htmlFor="image-provider">Image Provider:</label>
+                                <select
+                                    id="image-provider"
+                                    value={config.imageProvider}
+                                    onChange={(e) => setConfig({ ...config, imageProvider: e.target.value, imageModel: undefined })}
+                                    disabled={isGenerating}
+                                >
+                                    {availableProviders.image.map((p) => (
+                                        <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
+                        {IMAGE_MODELS[config.imageProvider] && (
+                            <div className="provider-selector">
+                                <label htmlFor="image-model">Image Model:</label>
+                                <select
+                                    id="image-model"
+                                    value={config.imageModel ?? IMAGE_MODELS[config.imageProvider]?.[0]?.value ?? ''}
+                                    onChange={(e) => setConfig({ ...config, imageModel: e.target.value })}
+                                    disabled={isGenerating}
+                                >
+                                    {IMAGE_MODELS[config.imageProvider].map((m) => (
+                                        <option key={m.value} value={m.value}>{m.label}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
                     </div>
                 </details>
                 <datalist id="animals">
