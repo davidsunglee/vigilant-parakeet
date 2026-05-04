@@ -1,0 +1,9 @@
+$ bun run --watch src/index.ts
+Registered Gemini providers (LLM + Image)
+Registered Anthropic LLM provider
+OPENAI_API_KEY not set — OpenAI providers disabled
+Proxy server running at http://localhost:3000
+Available LLM providers: gemini, anthropic
+Available image providers: gemini
+error: script "dev" was terminated by signal SIGTERM (Polite quit request)
+bash: line 1:  2543 Terminated: 15          bun run dev
