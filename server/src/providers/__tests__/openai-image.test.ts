@@ -32,6 +32,36 @@ describe('mapAspectRatioToSize', () => {
     });
   });
 
+  describe('gpt-image-2', () => {
+    it('maps 1:1 to 1024x1024', () => {
+      expect(mapAspectRatioToSize('1:1', 'gpt-image-2')).toBe('1024x1024');
+    });
+
+    it('maps 4:3 to 1536x1024', () => {
+      expect(mapAspectRatioToSize('4:3', 'gpt-image-2')).toBe('1536x1024');
+    });
+
+    it('maps 3:4 to 1024x1536', () => {
+      expect(mapAspectRatioToSize('3:4', 'gpt-image-2')).toBe('1024x1536');
+    });
+
+    it('maps 16:9 to 1536x1024', () => {
+      expect(mapAspectRatioToSize('16:9', 'gpt-image-2')).toBe('1536x1024');
+    });
+
+    it('maps 9:16 to 1024x1536', () => {
+      expect(mapAspectRatioToSize('9:16', 'gpt-image-2')).toBe('1024x1536');
+    });
+
+    it('returns auto for undefined aspectRatio', () => {
+      expect(mapAspectRatioToSize(undefined, 'gpt-image-2')).toBe('auto');
+    });
+
+    it('returns auto for unknown aspectRatio', () => {
+      expect(mapAspectRatioToSize('5:7', 'gpt-image-2')).toBe('auto');
+    });
+  });
+
   describe('dall-e-3', () => {
     it('maps 1:1 to 1024x1024', () => {
       expect(mapAspectRatioToSize('1:1', 'dall-e-3')).toBe('1024x1024');
@@ -84,7 +114,7 @@ describe('OpenAiImageAdapter', () => {
     expect(callArgs.model).toBe('dall-e-3');
   });
 
-  it('falls back to default model gpt-image-1 when request.model is absent', async () => {
+  it('falls back to default model gpt-image-2 when request.model is absent', async () => {
     const adapter = new OpenAiImageAdapter('fake-key');
     const generate = mock(() =>
       Promise.resolve({
@@ -96,7 +126,7 @@ describe('OpenAiImageAdapter', () => {
     await adapter.generate({ prompt: 'a cat' });
 
     const callArgs = generate.mock.calls[0][0];
-    expect(callArgs.model).toBe('gpt-image-1');
+    expect(callArgs.model).toBe('gpt-image-2');
   });
 
   it('passes mapped size based on aspectRatio', async () => {
@@ -168,7 +198,7 @@ describe('OpenAiImageAdapter', () => {
     );
   });
 
-  it('uses output_format png for gpt-image-1 (default)', async () => {
+  it('uses output_format png for gpt-image-2 (default)', async () => {
     const adapter = new OpenAiImageAdapter('fake-key');
     const generate = mock(() =>
       Promise.resolve({
@@ -180,6 +210,41 @@ describe('OpenAiImageAdapter', () => {
     await adapter.generate({ prompt: 'a cat' });
 
     const callArgs = generate.mock.calls[0][0];
+    expect(callArgs.output_format).toBe('png');
+    expect(callArgs.response_format).toBeUndefined();
+  });
+
+  it('uses output_format png for gpt-image-1', async () => {
+    const adapter = new OpenAiImageAdapter('fake-key');
+    const generate = mock(() =>
+      Promise.resolve({
+        data: [{ b64_json: 'abc123' }],
+      })
+    );
+    (adapter as any).client = { images: { generate } };
+
+    await adapter.generate({ prompt: 'a cat', model: 'gpt-image-1' });
+
+    const callArgs = generate.mock.calls[0][0];
+    expect(callArgs.model).toBe('gpt-image-1');
+    expect(callArgs.output_format).toBe('png');
+    expect(callArgs.response_format).toBeUndefined();
+  });
+
+  it('uses output_format png for gpt-image-2 when explicitly selected', async () => {
+    const adapter = new OpenAiImageAdapter('fake-key');
+    const generate = mock(() =>
+      Promise.resolve({
+        data: [{ b64_json: 'abc123' }],
+      })
+    );
+    (adapter as any).client = { images: { generate } };
+
+    await adapter.generate({ prompt: 'a cat', model: 'gpt-image-2', aspectRatio: '4:3' });
+
+    const callArgs = generate.mock.calls[0][0];
+    expect(callArgs.model).toBe('gpt-image-2');
+    expect(callArgs.size).toBe('1536x1024');
     expect(callArgs.output_format).toBe('png');
     expect(callArgs.response_format).toBeUndefined();
   });
