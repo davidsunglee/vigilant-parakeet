@@ -1,7 +1,7 @@
 import OpenAI from 'openai';
 import type { IImageProvider, ImageRequest, ImageResponse } from './types';
 
-const DEFAULT_MODEL = 'gpt-image-1';
+const DEFAULT_MODEL = 'gpt-image-2';
 
 const GPT_IMAGE_SIZES: Record<string, string> = {
   '1:1': '1024x1024',
