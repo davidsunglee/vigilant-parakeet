@@ -1,18 +1,28 @@
 import pLimit from 'p-limit';
 import type { AiConfig } from '../contexts/AiConfigContext';
-import { IStoryManifest, IBattleOutcome, IAnimalEntity, IPageContent, IStoryVisualAnchor } from '../types/story.types';
+import { IStoryManifest, IBattleOutcome, IAnimalEntity, IPageContent } from '../types/story.types';
+import {
+    FIERCE_MODE_DESCRIPTOR,
+    StoryGeneratorOptions,
+    getArtStyleDescriptor,
+} from '../types/artStyle';
 import { LlmService } from './LlmService';
 import { ImageService } from './ImageService';
 
 type ProgressCallback = (step: string, pct: number) => void;
+
+const DEFAULT_OPTIONS: StoryGeneratorOptions = { artStyle: 'surprise', fierceMode: false };
 
 export class StoryGeneratorService {
     static async generateStory(
         config: AiConfig,
         animalAQuery: string,
         animalBQuery: string,
-        onProgress?: ProgressCallback
+        options: StoryGeneratorOptions = DEFAULT_OPTIONS,
+        onProgress?: ProgressCallback,
     ): Promise<IStoryManifest> {
+        const fixedArtStyle = getArtStyleDescriptor(options.artStyle);
+        const fierceMode = options.fierceMode;
         // 1. Fetch Biology Profiles
         onProgress?.('Researching animal profiles...', 5);
         const [profileA, profileB] = await Promise.all([
@@ -25,8 +35,12 @@ export class StoryGeneratorService {
 
         // 1b. Generate canonical visual descriptions for consistent imagery
         onProgress?.('Designing animal illustrations...', 10);
-        const visualAnchor = await LlmService.getAnimalVisualDescriptions(config, animalA, animalB);
-        const artStyleAnchor = `Generate an illustration in the following style: ${visualAnchor.animalA.artStyle}. This is a children's educational book illustration.`;
+        const visualAnchor = await LlmService.getAnimalVisualDescriptions(config, animalA, animalB, {
+            fixedArtStyle,
+            fierceMode,
+        });
+        const fierceClause = fierceMode ? ` ${FIERCE_MODE_DESCRIPTOR}` : '';
+        const artStyleAnchor = `Generate an illustration in the following style: ${visualAnchor.animalA.artStyle}.${fierceClause} This is a children's educational book illustration.`;
 
         // 2. Determine Outcome Type internally
         const isSurpriseEnding = this.rollForSurpriseEnding();
@@ -50,7 +64,10 @@ export class StoryGeneratorService {
 
         // 3. Run showdown, both aspects, AND cover image in parallel
         onProgress?.('Simulating the showdown...', 15);
-        const coverPrompt = `A dramatic, dynamic children's book cover illustration showing a ${animalAQuery} and a ${animalBQuery} facing each other in an epic standoff. Both animals must be fully visible from head to tail. The scene should be intense and exciting, with both animals looking powerful and ready for battle. Bold, vibrant colors with an action-packed composition. No text in the image.`;
+        const coverPrompt = `A dramatic, dynamic children's book cover illustration showing a ${animalAQuery} and a ${animalBQuery} facing each other in an epic standoff. Both animals must be fully visible from head to tail. The scene should be intense and exciting, with both animals looking powerful and ready for battle. Bold, vibrant colors with an action-packed composition. No text in the image.
+
+Animal A: ${visualAnchor.animalA.fullDescription}
+Animal B: ${visualAnchor.animalB.fullDescription}`;
 
         const [outcomeData, aspectsA, aspectsB, coverImageUrl] = await Promise.all([
             LlmService.getShowdownAndOutcome(
@@ -60,11 +77,12 @@ export class StoryGeneratorService {
                 isSurpriseEnding,
                 endingType,
                 winnerId,
-                visualAnchor
+                visualAnchor,
+                fierceMode,
             ),
-            LlmService.getAspectsForAnimal(config, animalA, aspects, visualAnchor.animalA),
-            LlmService.getAspectsForAnimal(config, animalB, aspects, visualAnchor.animalB),
-            ImageService.generateImage(config, coverPrompt, { aspectRatio: '3:2' }),
+            LlmService.getAspectsForAnimal(config, animalA, aspects, visualAnchor.animalA, fierceMode),
+            LlmService.getAspectsForAnimal(config, animalB, aspects, visualAnchor.animalB, fierceMode),
+            ImageService.generateImage(config, coverPrompt, { aspectRatio: '3:2', styleAnchor: artStyleAnchor }),
         ]);
 
         const outcome: IBattleOutcome = {

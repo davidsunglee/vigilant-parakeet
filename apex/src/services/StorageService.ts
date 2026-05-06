@@ -31,6 +31,7 @@ function toLite(story: IStoryManifest): IStoryManifestLite {
         coverImageUrl: story.coverImageUrl,
         checklist: story.checklist,
         outcome: story.outcome,
+        ...(story.visualAnchor && { visualAnchor: story.visualAnchor }),
     };
 }
 
@@ -205,8 +206,11 @@ export class StorageService {
     static async markAsRead(id: string): Promise<void> {
         const manifest = await manifestStore.getItem<IStoryManifestLite>(id);
         if (manifest) {
-            manifest.metadata.hasBeenRead = true;
-            await manifestStore.setItem(id, manifest);
+            const updated: IStoryManifestLite = {
+                ...manifest,
+                metadata: { ...manifest.metadata, hasBeenRead: true },
+            };
+            await manifestStore.setItem(id, updated);
         }
     }
 }

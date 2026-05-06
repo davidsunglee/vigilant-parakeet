@@ -85,6 +85,7 @@ export interface IStoryManifestLite {
     coverImageUrl?: string;
     checklist: ITraitChecklist;
     outcome: IBattleOutcome;
+    visualAnchor?: IStoryVisualAnchor;
 }
 
 // Utility pattern for Prompt Engineering mapping

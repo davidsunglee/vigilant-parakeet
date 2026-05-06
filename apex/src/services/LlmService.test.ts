@@ -268,6 +268,29 @@ describe('LlmService', () => {
             expect(body.prompt).toContain('The Bigger Fish');
         });
 
+        it('adds Fierce Mode language to the showdown/outcome prompt when fierceMode is true', async () => {
+            global.fetch = mockFetchSuccess(mockReturnData);
+
+            await LlmService.getShowdownAndOutcome(
+                mockConfig, animalA, animalB, false, 'Standard Victory', 'animalA', undefined, true,
+            );
+
+            const body = JSON.parse((fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body);
+            expect(body.prompt).toContain('Fierce Mode is ON');
+            expect(body.prompt.toLowerCase()).toContain('powerful posture');
+        });
+
+        it('omits Fierce Mode language when fierceMode is false', async () => {
+            global.fetch = mockFetchSuccess(mockReturnData);
+
+            await LlmService.getShowdownAndOutcome(
+                mockConfig, animalA, animalB, false, 'Standard Victory', 'animalA',
+            );
+
+            const body = JSON.parse((fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body);
+            expect(body.prompt).not.toContain('Fierce Mode is ON');
+        });
+
         it('injects both animal descriptions in fixed order when visualAnchor is provided', async () => {
             global.fetch = mockFetchSuccess(mockReturnData);
 
@@ -382,6 +405,55 @@ describe('LlmService', () => {
             expect(body.responseSchema.properties).toHaveProperty('animalA');
             expect(body.responseSchema.properties).toHaveProperty('animalB');
         });
+
+        it('instructs the LLM to use a fixedArtStyle when provided and overrides returned artStyle', async () => {
+            global.fetch = mockFetchSuccess(mockVisualData);
+
+            const result = await LlmService.getAnimalVisualDescriptions(mockConfig, animalA, animalB, {
+                fixedArtStyle: 'graphic novel illustration with bold inked outlines',
+            });
+
+            const body = JSON.parse((fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body);
+            expect(body.prompt).toContain('graphic novel illustration with bold inked outlines');
+            expect(body.prompt).toContain('Use this exact art style');
+
+            // Result should reflect the fixed style rather than the LLM's returned artStyle
+            expect(result.animalA.artStyle).toBe('graphic novel illustration with bold inked outlines');
+            expect(result.animalB.artStyle).toBe('graphic novel illustration with bold inked outlines');
+        });
+
+        it('lets the LLM pick its own art style when no fixedArtStyle is passed (Surprise Me preserved)', async () => {
+            global.fetch = mockFetchSuccess(mockVisualData);
+
+            const result = await LlmService.getAnimalVisualDescriptions(mockConfig, animalA, animalB);
+
+            const body = JSON.parse((fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body);
+            expect(body.prompt).toContain('Pick ONE specific art style');
+            expect(result.animalA.artStyle).toBe('soft watercolor');
+        });
+
+        it('adds Fierce Mode language to the prompt when fierceMode is enabled', async () => {
+            global.fetch = mockFetchSuccess(mockVisualData);
+
+            await LlmService.getAnimalVisualDescriptions(mockConfig, animalA, animalB, {
+                fierceMode: true,
+            });
+
+            const body = JSON.parse((fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body);
+            expect(body.prompt).toContain('Fierce Mode is ON');
+            expect(body.prompt.toLowerCase()).toContain('powerful posture');
+            // Safety language must explicitly disallow gore/violence so the LLM stays children's-book safe.
+            expect(body.prompt.toLowerCase()).toContain('do not include gore');
+        });
+
+        it('omits Fierce Mode language when fierceMode is false', async () => {
+            global.fetch = mockFetchSuccess(mockVisualData);
+
+            await LlmService.getAnimalVisualDescriptions(mockConfig, animalA, animalB);
+
+            const body = JSON.parse((fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body);
+            expect(body.prompt).not.toContain('Fierce Mode is ON');
+        });
     });
 
     // ── getAspectsForAnimal ──────────────────────────────────────────
@@ -455,6 +527,56 @@ describe('LlmService', () => {
             const body = JSON.parse((fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body);
             expect(body.prompt).toContain('Visual consistency instructions');
             expect(body.prompt).toContain('A soft watercolor illustration of an adult golden eagle with dark brown feathers and a golden nape.');
+        });
+
+        it('instructs the LLM to vary pose, action, camera angle, and framing across pages', async () => {
+            const mockAspectData = [
+                { aspectName: 'Hunting & Diet', bodyText: 'x', visualPrompt: 'y' },
+            ];
+            global.fetch = mockFetchSuccess(mockAspectData);
+
+            const visualDescription: IAnimalVisualDescription = {
+                artStyle: 'soft watercolor',
+                speciesDescription: 'adult golden eagle',
+                bodyColors: 'dark brown feathers',
+                markings: 'golden nape',
+                faceShape: 'sharp hooked beak',
+                fullDescription: 'desc',
+            };
+
+            await LlmService.getAspectsForAnimal(mockConfig, animal, ['Hunting & Diet'], visualDescription);
+
+            const body = JSON.parse((fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body);
+            expect(body.prompt).toContain('Identity invariants');
+            expect(body.prompt).toContain('Scene variety');
+            expect(body.prompt.toLowerCase()).toContain('pose');
+            expect(body.prompt.toLowerCase()).toContain('camera angle');
+            expect(body.prompt.toLowerCase()).toContain('framing');
+        });
+
+        it('adds Fierce Mode language to the prompt when fierceMode is true', async () => {
+            const mockAspectData = [
+                { aspectName: 'Hunting & Diet', bodyText: 'x', visualPrompt: 'y' },
+            ];
+            global.fetch = mockFetchSuccess(mockAspectData);
+
+            await LlmService.getAspectsForAnimal(mockConfig, animal, ['Hunting & Diet'], undefined, true);
+
+            const body = JSON.parse((fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body);
+            expect(body.prompt).toContain('Fierce Mode is ON');
+            expect(body.prompt.toLowerCase()).toContain('powerful posture');
+        });
+
+        it('does NOT add Fierce Mode language when fierceMode is false', async () => {
+            const mockAspectData = [
+                { aspectName: 'Hunting & Diet', bodyText: 'x', visualPrompt: 'y' },
+            ];
+            global.fetch = mockFetchSuccess(mockAspectData);
+
+            await LlmService.getAspectsForAnimal(mockConfig, animal, ['Hunting & Diet']);
+
+            const body = JSON.parse((fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body);
+            expect(body.prompt).not.toContain('Fierce Mode is ON');
         });
     });
 });
