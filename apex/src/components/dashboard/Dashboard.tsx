@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { BookOpen, Search, Sparkles, Trash2, Trophy, Loader, Eye } from 'lucide-react';
-import { IStoryManifest, IStoryManifestLite } from '../../types/story.types';
+import { IStoryManifestLite } from '../../types/story.types';
+import { ART_STYLE_OPTIONS, ArtStyleId } from '../../types/artStyle';
 import { StorageService } from '../../services/StorageService';
 import { StoryGeneratorService } from '../../services/StoryGeneratorService';
 import { useAiConfig } from '../../contexts/AiConfigContext';
@@ -99,6 +100,8 @@ export const Dashboard: React.FC<{ onReadStory: (id: string) => void }> = ({ onR
     const [stories, setStories] = useState<IStoryManifestLite[]>([]);
     const [animalA, setAnimalA] = useState('');
     const [animalB, setAnimalB] = useState('');
+    const [artStyle, setArtStyle] = useState<ArtStyleId>('surprise');
+    const [fierceMode, setFierceMode] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
     const [generationStep, setGenerationStep] = useState(0);
     const [revealedWinners, setRevealedWinners] = useState<Set<string>>(new Set());
@@ -153,11 +156,14 @@ export const Dashboard: React.FC<{ onReadStory: (id: string) => void }> = ({ onR
             // #7: Pass progress callback
             const newStory = await StoryGeneratorService.generateStory(
                 config, animalA.trim(), animalB.trim(),
+                { artStyle, fierceMode },
                 (step, pct) => { setProgressStep(step); setProgressPct(pct); }
             );
             await StorageService.saveStory(newStory);
             setAnimalA('');
             setAnimalB('');
+            setArtStyle('surprise');
+            setFierceMode(false);
             // #13: Optimistic story append instead of re-reading all from IndexedDB
             setStories(prev => [newStory, ...prev]);
         } catch (error) {
@@ -166,7 +172,7 @@ export const Dashboard: React.FC<{ onReadStory: (id: string) => void }> = ({ onR
         } finally {
             setIsGenerating(false);
         }
-    }, [animalA, animalB, config]);
+    }, [animalA, animalB, artStyle, fierceMode, config]);
 
     // #6: Memoized handleDelete
     const handleDelete = useCallback(async (id: string) => {
@@ -231,10 +237,35 @@ export const Dashboard: React.FC<{ onReadStory: (id: string) => void }> = ({ onR
                     <button type="submit" disabled={isGenerating || !animalA || !animalB} className="generate-btn">
                         {isGenerating ? 'Generating Simulation...' : <span><Sparkles size={18} /> Generate Story</span>}
                     </button>
+                    <div className="art-style-picker">
+                        <label htmlFor="art-style">Art Style:</label>
+                        <select
+                            id="art-style"
+                            value={artStyle}
+                            onChange={(e) => setArtStyle(e.target.value as ArtStyleId)}
+                            disabled={isGenerating}
+                        >
+                            {ART_STYLE_OPTIONS.map((o) => (
+                                <option key={o.id} value={o.id}>{o.label}</option>
+                            ))}
+                        </select>
+                    </div>
                 </form>
                 <details className="advanced-options">
                     <summary>Advanced Options</summary>
                     <div className="advanced-options-content">
+                        <div className="provider-selector fierce-mode-toggle">
+                            <label htmlFor="fierce-mode">
+                                <input
+                                    id="fierce-mode"
+                                    type="checkbox"
+                                    checked={fierceMode}
+                                    onChange={(e) => setFierceMode(e.target.checked)}
+                                    disabled={isGenerating}
+                                />
+                                {' '}Fierce Mode
+                            </label>
+                        </div>
                         {availableProviders.llm.length > 1 && (
                             <div className="provider-selector">
                                 <label htmlFor="llm-provider">LLM Provider:</label>

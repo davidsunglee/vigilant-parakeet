@@ -54,7 +54,13 @@ export class LlmService {
         };
     }
 
-    static async getAspectsForAnimal(config: AiConfig, animal: IAnimalEntity, aspects: string[], visualDescription?: IAnimalVisualDescription) {
+    static async getAspectsForAnimal(
+        config: AiConfig,
+        animal: IAnimalEntity,
+        aspects: string[],
+        visualDescription?: IAnimalVisualDescription,
+        fierceMode = false,
+    ) {
         let prompt = `Write an engaging, educational children's book page (about 2-3 sentences max) for each of the provided aspects for the animal: ${animal.commonName}. Provide a highly descriptive visual prompt for an image for the page.
 
 Fun fact rules:
@@ -67,7 +73,20 @@ Fun fact rules:
             prompt += `\n\nIMPORTANT — Visual consistency instructions for the visualPrompt fields:
 Every visualPrompt you generate MUST begin with the following canonical animal description, then add the scene-specific details for that aspect:
 "${visualDescription.fullDescription}"
-Do not contradict or alter the animal's species, colors, markings, or art style described above.`;
+
+Identity invariants — keep these IDENTICAL across every page so the same animal stays recognizable: species/subspecies, face shape, body colors, markings, horns/antlers/tusks, mane, tail, and other distinctive proportions and physical features described above.
+
+Scene variety — vary these across pages so the book does not feel like a series of near-duplicate portraits:
+- Pose and action (standing, running, jumping, swimming, diving, flying, climbing, crouching, stalking, leaping — pick what fits the animal and the page's aspect).
+- Camera angle (front, side, three-quarter, back, low-angle, high-angle, close-up, wide).
+- Framing and placement in the composition (left, right, off-center; full body, mid-body crop is OK occasionally as long as identity-defining features remain visible).
+- Environment cues that match the page's aspect (habitat, terrain, lighting, time of day) — but never contradict species, colors, markings, or the established art style.
+
+Do not lock the animal to the same pose, camera angle, or centered static portrait across all pages. Do not contradict or alter the animal's species, colors, markings, or art style.`;
+        }
+
+        if (fierceMode) {
+            prompt += `\n\nFierce Mode is ON for this book. Each visualPrompt should describe powerful posture, alert focused expression, and dynamic energy appropriate for a children's educational book. Do not include gore, injury, blood, horror, or realistic violence.`;
         }
 
         prompt += `\n\nGenerate exactly one array item for each aspect provided, strictly in the same order. Aspects: \n\n${aspects.join('\n')}`;
@@ -97,7 +116,8 @@ Do not contradict or alter the animal's species, colors, markings, or art style 
         isSurpriseEnding: boolean,
         endingType: string,
         winnerId: string,
-        visualAnchor?: IStoryVisualAnchor
+        visualAnchor?: IStoryVisualAnchor,
+        fierceMode = false,
     ) {
         const winnerName = winnerId === 'animalA' ? animalA.commonName : (winnerId === 'animalB' ? animalB.commonName : 'Neither');
         let prompt = `Two animals are facing off: ${animalA.commonName} and ${animalB.commonName}.
@@ -115,7 +135,15 @@ Every visualPrompt MUST begin with both canonical animal descriptions in the fol
 1. "${visualAnchor.animalA.fullDescription}"
 2. "${visualAnchor.animalB.fullDescription}"
 Include both descriptions in every visualPrompt regardless of whether the scene focuses on one animal — the showdown and outcome pages depict both animals together.
+
+Identity invariants — keep IDENTICAL between the showdown and outcome pages and consistent with the rest of the book: species/subspecies, face shape, body colors, markings, horns/antlers/tusks, mane, tail, and distinctive proportions.
+Scene variety — vary pose, action, camera angle, framing, and placement between the showdown page and the outcome page so the two scenes feel distinct rather than near-duplicates.
+
 Do not contradict or alter the animals' species, colors, markings, or art style described above.`;
+        }
+
+        if (fierceMode) {
+            prompt += `\n\nFierce Mode is ON for this book. Both visualPrompts should describe powerful posture, alert focused expressions, and dynamic energy appropriate for a children's educational book. Do not include gore, injury, blood, horror, or realistic violence.`;
         }
 
         const data = await callLlm(config, prompt, {
@@ -165,8 +193,20 @@ Do not contradict or alter the animals' species, colors, markings, or art style 
     static async getAnimalVisualDescriptions(
         config: AiConfig,
         animalA: IAnimalEntity,
-        animalB: IAnimalEntity
+        animalB: IAnimalEntity,
+        options?: { fixedArtStyle?: string; fierceMode?: boolean },
     ): Promise<IStoryVisualAnchor> {
+        const fixedArtStyle = options?.fixedArtStyle;
+        const fierceMode = options?.fierceMode ?? false;
+
+        const styleInstruction = fixedArtStyle
+            ? `Use this exact art style for BOTH animals throughout the book — do not invent a different style: "${fixedArtStyle}". Use this exact phrasing as the art-style portion of fullDescription.`
+            : `Pick ONE specific art style (e.g., "soft watercolor", "bold digital cartoon", "colored pencil sketch") that will be used consistently for BOTH animals throughout the book.`;
+
+        const fierceInstruction = fierceMode
+            ? `\n\nFierce Mode is ON: each fullDescription should incorporate children's-book-appropriate intensity — powerful posture, alert focused expression, dynamic energy, dramatic but safe presence. Do not include gore, injury, blood, horror, or realistic violence.`
+            : '';
+
         const data = await callLlm(
             config,
             `You are designing the visual look for two animals in a children's educational book titled "Who Would Win?"
@@ -175,7 +215,7 @@ The two animals are:
 1. ${animalA.commonName} (${animalA.scientificName})
 2. ${animalB.commonName} (${animalB.scientificName})
 
-Pick ONE specific art style (e.g., "soft watercolor", "bold digital cartoon", "colored pencil sketch") that will be used consistently for BOTH animals throughout the book.
+${styleInstruction}${fierceInstruction}
 
 For each animal, provide:
 - speciesDescription: specific species/breed (e.g., "adult male African lion")
@@ -217,9 +257,11 @@ Keep all descriptions concrete and visual (colors, shapes, textures) rather than
             'You are a children\'s book illustrator planning the visual style for a new educational book. Your descriptions will be used as prompts for an AI image generator, so be specific and concrete about visual details. Both animals MUST share the same art style.'
         );
 
+        const resolvedArtStyle = fixedArtStyle ?? data.artStyle;
+
         return {
             animalA: {
-                artStyle: data.artStyle,
+                artStyle: resolvedArtStyle,
                 speciesDescription: data.animalA.speciesDescription,
                 bodyColors: data.animalA.bodyColors,
                 markings: data.animalA.markings,
@@ -227,7 +269,7 @@ Keep all descriptions concrete and visual (colors, shapes, textures) rather than
                 fullDescription: data.animalA.fullDescription,
             },
             animalB: {
-                artStyle: data.artStyle,
+                artStyle: resolvedArtStyle,
                 speciesDescription: data.animalB.speciesDescription,
                 bodyColors: data.animalB.bodyColors,
                 markings: data.animalB.markings,

@@ -45,6 +45,25 @@ const mockPages: IPageContent[] = [
     },
 ];
 
+const mockVisualAnchor: IStoryManifest['visualAnchor'] = {
+    animalA: {
+        artStyle: 'soft watercolor',
+        speciesDescription: 'adult male African lion',
+        bodyColors: 'golden-tawny fur',
+        markings: 'dark mane',
+        faceShape: 'broad square jaw',
+        fullDescription: 'A soft watercolor lion with a dark mane.',
+    },
+    animalB: {
+        artStyle: 'soft watercolor',
+        speciesDescription: 'adult Bengal tiger',
+        bodyColors: 'orange fur with white underbelly',
+        markings: 'black stripes',
+        faceShape: 'round face',
+        fullDescription: 'A soft watercolor tiger with black stripes.',
+    },
+};
+
 function makeStory(id: string, createdAt: number, overrides?: Partial<IStoryManifest>): IStoryManifest {
     return {
         metadata: { id, title: `Story ${id}`, createdAt, hasBeenRead: false },
@@ -74,6 +93,7 @@ function toLite(story: IStoryManifest): IStoryManifestLite {
         coverImageUrl: story.coverImageUrl,
         checklist: story.checklist,
         outcome: story.outcome,
+        ...(story.visualAnchor && { visualAnchor: story.visualAnchor }),
     };
 }
 
@@ -95,6 +115,19 @@ describe('StorageService', () => {
 
             expect(mockManifestStore.setItem).toHaveBeenCalledWith('uuid-1', toLite(story));
             expect(mockPagesStore.setItem).toHaveBeenCalledWith('uuid-1', story.pages);
+        });
+
+        it('persists visualAnchor in the lightweight manifest', async () => {
+            const story = makeStory('uuid-visual-anchor', 1500, { visualAnchor: mockVisualAnchor });
+            mockManifestStore.setItem.mockResolvedValue(undefined);
+            mockPagesStore.setItem.mockResolvedValue(undefined);
+
+            await StorageService.saveStory(story);
+
+            expect(mockManifestStore.setItem).toHaveBeenCalledWith(
+                'uuid-visual-anchor',
+                expect.objectContaining({ visualAnchor: mockVisualAnchor }),
+            );
         });
 
         it('throws a user-friendly error when IndexedDB fails', async () => {

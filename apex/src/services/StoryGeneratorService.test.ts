@@ -334,7 +334,13 @@ describe('StoryGeneratorService', () => {
             progressCalls.push([step, pct]);
         });
 
-        await StoryGeneratorService.generateStory(mockConfig, 'Lion', 'Tiger', onProgress);
+        await StoryGeneratorService.generateStory(
+            mockConfig,
+            'Lion',
+            'Tiger',
+            { artStyle: 'surprise', fierceMode: false },
+            onProgress,
+        );
 
         // Check that progress was called at key milestones
         expect(onProgress).toHaveBeenCalled();
@@ -382,6 +388,7 @@ describe('StoryGeneratorService', () => {
             mockConfig,
             expect.objectContaining({ id: 'animalA', commonName: 'Lion' }),
             expect.objectContaining({ id: 'animalB', commonName: 'Tiger' }),
+            expect.objectContaining({ fierceMode: false }),
         );
     });
 
@@ -408,7 +415,7 @@ describe('StoryGeneratorService', () => {
         expect(calls[0][6]).toEqual(mockVisualAnchor);
     });
 
-    it('passes styleAnchor to page image calls but NOT to the cover', async () => {
+    it('passes styleAnchor to ALL image calls including the cover', async () => {
         setupDefaultMocks();
         const imageCalls: Array<[unknown, string, unknown]> = [];
         vi.mocked(ImageService.generateImage).mockImplementation(async (_config, prompt, options) => {
@@ -418,17 +425,17 @@ describe('StoryGeneratorService', () => {
 
         await StoryGeneratorService.generateStory(mockConfig, 'Lion', 'Tiger');
 
-        // First call is the cover (in the parallel batch) — no styleAnchor
-        const coverOptions = imageCalls[0][2] as Record<string, unknown>;
-        expect(coverOptions).not.toHaveProperty('styleAnchor');
-
-        // Page image calls (indices 1-26) should have styleAnchor
-        for (let i = 1; i < imageCalls.length; i++) {
-            const pageOptions = imageCalls[i][2] as Record<string, unknown>;
-            expect(pageOptions).toHaveProperty('styleAnchor');
-            expect(typeof pageOptions.styleAnchor).toBe('string');
-            expect(pageOptions.styleAnchor as string).toContain('soft watercolor');
+        // Every image call (cover + 26 pages) must include the same styleAnchor
+        for (const [, , options] of imageCalls) {
+            const opts = options as Record<string, unknown>;
+            expect(opts).toHaveProperty('styleAnchor');
+            expect(typeof opts.styleAnchor).toBe('string');
+            expect(opts.styleAnchor as string).toContain('soft watercolor');
         }
+
+        // First call is the cover with the 3:2 aspect ratio
+        const coverOptions = imageCalls[0][2] as Record<string, unknown>;
+        expect(coverOptions.aspectRatio).toBe('3:2');
     });
 
     it('includes visualAnchor in the returned manifest', async () => {
@@ -436,5 +443,103 @@ describe('StoryGeneratorService', () => {
         const manifest = await StoryGeneratorService.generateStory(mockConfig, 'Lion', 'Tiger');
         expect(manifest.visualAnchor).toBeDefined();
         expect(manifest.visualAnchor).toEqual(mockVisualAnchor);
+    });
+
+    // ── Art Style + Fierce Mode Tests ───────────────────────────────
+
+    it('passes fixedArtStyle to getAnimalVisualDescriptions when a preset is selected', async () => {
+        setupDefaultMocks();
+        await StoryGeneratorService.generateStory(mockConfig, 'Lion', 'Tiger', {
+            artStyle: 'watercolor',
+            fierceMode: false,
+        });
+        const calls = vi.mocked(LlmService.getAnimalVisualDescriptions).mock.calls;
+        expect(calls[0][3]).toEqual(expect.objectContaining({
+            fixedArtStyle: expect.stringContaining('watercolor'),
+            fierceMode: false,
+        }));
+    });
+
+    it('omits fixedArtStyle when "surprise" is selected (LLM picks)', async () => {
+        setupDefaultMocks();
+        await StoryGeneratorService.generateStory(mockConfig, 'Lion', 'Tiger', {
+            artStyle: 'surprise',
+            fierceMode: false,
+        });
+        const calls = vi.mocked(LlmService.getAnimalVisualDescriptions).mock.calls;
+        const opts = calls[0][3] as { fixedArtStyle?: string; fierceMode?: boolean };
+        expect(opts.fixedArtStyle).toBeUndefined();
+        expect(opts.fierceMode).toBe(false);
+    });
+
+    it('threads fierceMode through to getAspectsForAnimal and getShowdownAndOutcome', async () => {
+        setupDefaultMocks();
+        await StoryGeneratorService.generateStory(mockConfig, 'Lion', 'Tiger', {
+            artStyle: 'surprise',
+            fierceMode: true,
+        });
+
+        const aspectCalls = vi.mocked(LlmService.getAspectsForAnimal).mock.calls;
+        expect(aspectCalls[0][4]).toBe(true);
+        expect(aspectCalls[1][4]).toBe(true);
+
+        const showdownCalls = vi.mocked(LlmService.getShowdownAndOutcome).mock.calls;
+        expect(showdownCalls[0][7]).toBe(true);
+    });
+
+    it('includes fierce-mode language in the styleAnchor for every image call when Fierce Mode is on', async () => {
+        setupDefaultMocks();
+        const imageCalls: Array<[unknown, string, unknown]> = [];
+        vi.mocked(ImageService.generateImage).mockImplementation(async (_config, prompt, options) => {
+            imageCalls.push([_config, prompt, options]);
+            return 'data:image/png;base64,mockimg';
+        });
+
+        await StoryGeneratorService.generateStory(mockConfig, 'Lion', 'Tiger', {
+            artStyle: 'graphic-novel',
+            fierceMode: true,
+        });
+
+        // 26 pages + 1 cover = 27 calls; every one must carry the fierce intensity language
+        for (const [, , options] of imageCalls) {
+            const opts = options as Record<string, unknown>;
+            const anchor = opts.styleAnchor as string;
+            expect(anchor).toBeDefined();
+            expect(anchor.toLowerCase()).toContain('powerful posture');
+        }
+    });
+
+    it('omits fierce-mode language from the styleAnchor when Fierce Mode is off', async () => {
+        setupDefaultMocks();
+        const imageCalls: Array<[unknown, string, unknown]> = [];
+        vi.mocked(ImageService.generateImage).mockImplementation(async (_config, prompt, options) => {
+            imageCalls.push([_config, prompt, options]);
+            return 'data:image/png;base64,mockimg';
+        });
+
+        await StoryGeneratorService.generateStory(mockConfig, 'Lion', 'Tiger', {
+            artStyle: 'watercolor',
+            fierceMode: false,
+        });
+
+        for (const [, , options] of imageCalls) {
+            const opts = options as Record<string, unknown>;
+            const anchor = (opts.styleAnchor as string).toLowerCase();
+            expect(anchor).not.toContain('powerful posture');
+            expect(anchor).not.toContain('alert');
+        }
+    });
+
+    it('uses default options (surprise, fierce off) when no options are passed', async () => {
+        setupDefaultMocks();
+        await StoryGeneratorService.generateStory(mockConfig, 'Lion', 'Tiger');
+
+        const calls = vi.mocked(LlmService.getAnimalVisualDescriptions).mock.calls;
+        const opts = calls[0][3] as { fixedArtStyle?: string; fierceMode?: boolean };
+        expect(opts.fixedArtStyle).toBeUndefined();
+        expect(opts.fierceMode).toBe(false);
+
+        const aspectCalls = vi.mocked(LlmService.getAspectsForAnimal).mock.calls;
+        expect(aspectCalls[0][4]).toBe(false);
     });
 });
