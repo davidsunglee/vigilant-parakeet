@@ -1,0 +1,58 @@
+{
+  "name": "Agentic OrbStack Apple Baseline",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "remoteUser": "coder",
+  "updateRemoteUserUID": true,
+  "containerEnv": {
+    "SHELL": "/usr/bin/zsh",
+    "EDITOR": "nvim",
+    "VISUAL": "nvim",
+    "NPM_CONFIG_PREFIX": "/home/coder/.local",
+    "CLAUDE_CONFIG_DIR": "/home/coder/.claude"
+  },
+  "mounts": [
+    "source=agentic-orbstack-pi,target=/home/coder/.pi,type=volume",
+    "source=agentic-orbstack-claude,target=/home/coder/.claude,type=volume",
+    "source=agentic-orbstack-codex,target=/home/coder/.codex,type=volume",
+    "source=agentic-orbstack-opencode-config,target=/home/coder/.config/opencode,type=volume",
+    "source=agentic-orbstack-opencode-data,target=/home/coder/.local/share/opencode,type=volume",
+    "source=agentic-orbstack-npm-cache,target=/home/coder/.npm,type=volume",
+    "source=agentic-orbstack-pnpm-store,target=/home/coder/.local/share/pnpm,type=volume",
+    "source=agentic-orbstack-bun-cache,target=/home/coder/.cache/bun,type=volume",
+    "source=agentic-orbstack-uv-cache,target=/home/coder/.cache/uv,type=volume",
+    "source=agentic-orbstack-pip-cache,target=/home/coder/.cache/pip,type=volume",
+    "source=agentic-orbstack-zsh-history,target=/home/coder/.local/state/zsh,type=volume",
+    "source=agentic-orbstack-zoxide,target=/home/coder/.local/share/zoxide,type=volume"
+  ],
+  "postCreateCommand": "git config --global --add safe.directory ${containerWorkspaceFolder}",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "charliermarsh.ruff",
+        "dbaeumer.vscode-eslint",
+        "eamodio.gitlens",
+        "GitHub.vscode-pull-request-github",
+        "EditorConfig.EditorConfig"
+      ],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "zsh",
+        "terminal.integrated.profiles.linux": {
+          "zsh": {
+            "path": "/usr/bin/zsh",
+            "args": ["-l"]
+          }
+        },
+        "diffEditor.renderSideBySide": true,
+        "diffEditor.ignoreTrimWhitespace": false,
+        "scm.diffDecorations": "all",
+        "git.openRepositoryInParentFolders": "always",
+        "gitlens.showWelcomeOnInstall": false,
+        "gitlens.showWhatsNewAfterUpgrades": false
+      }
+    }
+  }
+}
