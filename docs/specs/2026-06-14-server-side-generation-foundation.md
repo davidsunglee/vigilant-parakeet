@@ -69,6 +69,9 @@ who generated what or what it cost.
   slice, not this one.
 - **Mobile client (Goal 7)** — web only. The backend it would consume
   (Supabase + the Edge Function + Trigger.dev) is established here.
+- **Local-library migration tool** — existing per-browser IndexedDB stories are
+  abandoned in this slice (clean break); a one-time import tool may be built
+  later, once the new architecture has settled.
 
 ### Non-goals (explicitly not in this slice)
 
@@ -82,6 +85,15 @@ who generated what or what it cost.
   is a follow-up.
 - Any change to the book content/structure, the 26-page format, art-style
   controls, or surprise-ending logic. The pipeline is **ported**, not redesigned.
+- Migrating existing per-browser IndexedDB libraries into the new backend.
+  Existing local stories are abandoned (clean break); see Deferred for the
+  possible later migration tool.
+- A user-facing manual **Retry** control for a failed generation. Automatic
+  step-level retries are in scope (see Generation pipeline); a terminal `failed`
+  story is shown read-only with its error in this slice.
+- Changing the text model away from the current Anthropic settings. Claude
+  Sonnet 4 (`claude-sonnet-4-20250514`) is kept as-is because its output is
+  already what we want; an Opus / extended-thinking upgrade is not pursued here.
 
 ## Platform decisions (settled)
 
@@ -90,7 +102,7 @@ who generated what or what it cost.
 | Database, auth, object storage, catalog API | **Supabase** (Postgres + Auth + Storage + PostgREST + Edge Functions) |
 | Durable background generation | **Trigger.dev** (cloud, runs the task compute) |
 | Static web hosting for the SPA | **Vercel** (default; swappable — no lock-in) |
-| Text model | **Opus 4.6** (`claude-opus-4-6`) via the Anthropic adapter, adaptive thinking |
+| Text model | **Claude Sonnet 4** (`claude-sonnet-4-20250514`) via the existing Anthropic adapter, current settings (structured-output tool, `max_tokens: 4096`, no extended thinking) |
 | Image model | **gpt-image-2** via the OpenAI adapter, quality pinned (default `medium`) |
 | Per-user spend tracking (data only) | Tag provider calls with `userId` for later aggregation |
 
@@ -195,13 +207,17 @@ steps. Each step updates `progress_step` / `progress_pct` on the `stories` row.
 6. **Assemble & finalize** — build `IStoryManifest` with Storage paths, write it
    to `manifest`, set `title`, set `status = ready`.
 
-On any unrecoverable error the task sets `status = failed` and `error`; completed
-steps remain checkpointed so a retry does not repeat them.
+The task is configured with an automatic retry policy, so a transient step
+failure is retried and resumes from the last checkpoint rather than repeating
+completed steps. Only once retries are exhausted does the task set
+`status = failed` and `error`; this slice surfaces that terminal state read-only
+(no user-facing manual retry — see Non-goals).
 
 `generationConfig` carries model + image-quality selection with defaults of
-Opus 4.6 (adaptive thinking) for text and gpt-image-2 (`medium`) for images. The
-task supports per-call model selection so aspect generation can later be routed
-to a cheaper model without code changes; this slice ships the defaults.
+Claude Sonnet 4 (`claude-sonnet-4-20250514`) for text and gpt-image-2 (`medium`
+quality) for images. The task supports per-call model selection so aspect
+generation can later be routed to a cheaper model without code changes; this
+slice ships the defaults.
 
 Provider calls are tagged with `owner_id` using the providers' native
 request-metadata fields (OpenAI `user`, Anthropic `metadata.user_id`) to enable
@@ -242,7 +258,7 @@ slice.
 
 The existing `server/.env` provider keys move to Trigger.dev. Gemini keys may be
 retained if the Gemini adapters are kept available, but the slice's defaults are
-Opus 4.6 + gpt-image-2.
+Claude Sonnet 4 + gpt-image-2.
 
 ## Codebase changes
 
@@ -255,7 +271,7 @@ Opus 4.6 + gpt-image-2.
 | `apex/src/components/dashboard/Dashboard.tsx` | **Update** — trigger via Edge Function, render library from Supabase, show live progress |
 | `apex/src/components/book/BookViewer.tsx` | **Update** — resolve Storage paths to signed URLs instead of consuming base64 |
 | `apex/src/types/story.types.ts`, `artStyle.ts` | **Keep** — shared shape; image fields now hold Storage paths |
-| `server/src/providers/*`, `server/src/registry.ts` | **Move** into the Trigger.dev task project |
+| `server/src/providers/*`, `server/src/registry.ts` | **Move** into the Trigger.dev task project (Anthropic adapter unchanged; OpenAI image adapter gains a `quality` field) |
 | `server/src/index.ts`, `server/src/routes/*` (Elysia) | **Delete** after adapters are relocated |
 | Supabase schema migrations, RLS policies, `story-images` bucket | **New** |
 | `create-story` Edge Function | **New** |
@@ -278,11 +294,14 @@ Exact layout (workspace vs. separate projects) is an implementation-plan detail.
 ## Risks & open questions
 
 - **Provider concurrency limits** — gpt-image-2 image generation must be batched
-  to respect OpenAI rate limits; the task must cap concurrent image calls
-  (today's client chunks 4 at a time — preserve a similar bound).
-- **Anthropic adapter update** — the existing adapter targets older usage; it
-  must call `claude-opus-4-6` with adaptive thinking. Confirm the installed SDK
-  version supports the required parameters.
+  to respect OpenAI rate limits; the task must cap concurrent image calls. The
+  current client uses a `p-limit` bound of **2 concurrent calls plus a 15-second
+  inter-request delay** on the OpenAI path (`StoryGeneratorService.ts`); port a
+  similar bound rather than the looser Gemini-era setting.
+- **Provider adapters port largely as-is** — the Anthropic adapter is relocated
+  unchanged (Claude Sonnet 4, current structured-output settings). The OpenAI
+  image adapter needs one change: `openai-image.ts` sends no `quality` field
+  today, so pinning quality to `medium` means threading that parameter through.
 - **Storage URL strategy** — signed URLs (with TTL) vs. authenticated reads for
   ~25 images per book; choose during planning, favoring signed URLs.
 - **Realtime + RLS** — confirm `stories` is added to the Realtime publication and
@@ -311,4 +330,6 @@ Exact layout (workspace vs. separate projects) is an implementation-plan detail.
 - Provider calls carry the owner's `userId` via native provider metadata
   (verified in provider dashboards/logs), establishing the data for later spend
   aggregation.
-```
+- A generation that fails terminally (after the task's automatic retries are
+  exhausted) appears in the library as `failed` with its error message shown; no
+  manual retry action is offered in this slice.
