@@ -55,7 +55,7 @@ export class OpenAiImageAdapter implements IImageProvider {
       ...(request.userId && { user: request.userId }),
     });
 
-    const imageData = response.data[0];
+    const imageData = response.data?.[0];
     if (!imageData?.b64_json) {
       throw new Error('No image data in OpenAI response');
     }

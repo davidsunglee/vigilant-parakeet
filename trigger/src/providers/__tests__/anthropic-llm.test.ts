@@ -15,7 +15,7 @@ describe('AnthropicLlmAdapter', () => {
   describe('generate()', () => {
     function buildAdapter(responseContent: unknown[]) {
       const adapter = new AnthropicLlmAdapter('fake-key');
-      const create = mock(() => Promise.resolve({ content: responseContent }));
+      const create = mock((..._args: any[]) => Promise.resolve({ content: responseContent }));
       (adapter as any).client = { messages: { create } };
       return { adapter, create };
     }

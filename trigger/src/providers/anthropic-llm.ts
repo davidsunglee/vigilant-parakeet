@@ -53,6 +53,6 @@ export class AnthropicLlmAdapter implements ILlmProvider {
 
     const input = toolBlock.input as Record<string, unknown>;
     // Unwrap the envelope if we wrapped the schema
-    return { data: needsWrapping ? (input.result as Record<string, unknown>) : input };
+    return { data: needsWrapping ? input.result : input };
   }
 }

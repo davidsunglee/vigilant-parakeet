@@ -101,7 +101,7 @@ describe('OpenAiImageAdapter', () => {
 
   it('uses request.model when provided', async () => {
     const adapter = new OpenAiImageAdapter('fake-key');
-    const generate = mock(() =>
+    const generate = mock((..._args: any[]) =>
       Promise.resolve({
         data: [{ b64_json: 'abc123' }],
       })
@@ -116,7 +116,7 @@ describe('OpenAiImageAdapter', () => {
 
   it('falls back to default model gpt-image-2 when request.model is absent', async () => {
     const adapter = new OpenAiImageAdapter('fake-key');
-    const generate = mock(() =>
+    const generate = mock((..._args: any[]) =>
       Promise.resolve({
         data: [{ b64_json: 'abc123' }],
       })
@@ -131,7 +131,7 @@ describe('OpenAiImageAdapter', () => {
 
   it('passes mapped size based on aspectRatio', async () => {
     const adapter = new OpenAiImageAdapter('fake-key');
-    const generate = mock(() =>
+    const generate = mock((..._args: any[]) =>
       Promise.resolve({
         data: [{ b64_json: 'abc123' }],
       })
@@ -146,7 +146,7 @@ describe('OpenAiImageAdapter', () => {
 
   it('uses auto size when no aspectRatio is provided', async () => {
     const adapter = new OpenAiImageAdapter('fake-key');
-    const generate = mock(() =>
+    const generate = mock((..._args: any[]) =>
       Promise.resolve({
         data: [{ b64_json: 'abc123' }],
       })
@@ -161,7 +161,7 @@ describe('OpenAiImageAdapter', () => {
 
   it('returns correct data URI from b64_json response', async () => {
     const adapter = new OpenAiImageAdapter('fake-key');
-    const generate = mock(() =>
+    const generate = mock((..._args: any[]) =>
       Promise.resolve({
         data: [{ b64_json: 'abc123' }],
       })
@@ -174,7 +174,7 @@ describe('OpenAiImageAdapter', () => {
 
   it('throws when response has no data', async () => {
     const adapter = new OpenAiImageAdapter('fake-key');
-    const generate = mock(() =>
+    const generate = mock((..._args: any[]) =>
       Promise.resolve({ data: [] })
     );
     (adapter as any).client = { images: { generate } };
@@ -186,7 +186,7 @@ describe('OpenAiImageAdapter', () => {
 
   it('throws when response data has no b64_json', async () => {
     const adapter = new OpenAiImageAdapter('fake-key');
-    const generate = mock(() =>
+    const generate = mock((..._args: any[]) =>
       Promise.resolve({
         data: [{ url: 'https://example.com/image.png' }],
       })
@@ -200,7 +200,7 @@ describe('OpenAiImageAdapter', () => {
 
   it('uses output_format png for gpt-image-2 (default)', async () => {
     const adapter = new OpenAiImageAdapter('fake-key');
-    const generate = mock(() =>
+    const generate = mock((..._args: any[]) =>
       Promise.resolve({
         data: [{ b64_json: 'abc123' }],
       })
@@ -216,7 +216,7 @@ describe('OpenAiImageAdapter', () => {
 
   it('uses output_format png for gpt-image-1', async () => {
     const adapter = new OpenAiImageAdapter('fake-key');
-    const generate = mock(() =>
+    const generate = mock((..._args: any[]) =>
       Promise.resolve({
         data: [{ b64_json: 'abc123' }],
       })
@@ -233,7 +233,7 @@ describe('OpenAiImageAdapter', () => {
 
   it('uses output_format png for gpt-image-2 when explicitly selected', async () => {
     const adapter = new OpenAiImageAdapter('fake-key');
-    const generate = mock(() =>
+    const generate = mock((..._args: any[]) =>
       Promise.resolve({
         data: [{ b64_json: 'abc123' }],
       })
@@ -251,7 +251,7 @@ describe('OpenAiImageAdapter', () => {
 
   it('uses response_format b64_json for dall-e-3', async () => {
     const adapter = new OpenAiImageAdapter('fake-key');
-    const generate = mock(() =>
+    const generate = mock((..._args: any[]) =>
       Promise.resolve({
         data: [{ b64_json: 'abc123' }],
       })
@@ -268,7 +268,7 @@ describe('OpenAiImageAdapter', () => {
   it('passes quality when provided', async () => {
     const prompt = 'a cat';
     const adapter = new OpenAiImageAdapter('fake-key');
-    const generate = mock(() =>
+    const generate = mock((..._args: any[]) =>
       Promise.resolve({
         data: [{ b64_json: 'abc123' }],
       })
@@ -284,7 +284,7 @@ describe('OpenAiImageAdapter', () => {
   it('passes user when userId provided', async () => {
     const prompt = 'a cat';
     const adapter = new OpenAiImageAdapter('fake-key');
-    const generate = mock(() =>
+    const generate = mock((..._args: any[]) =>
       Promise.resolve({
         data: [{ b64_json: 'abc123' }],
       })

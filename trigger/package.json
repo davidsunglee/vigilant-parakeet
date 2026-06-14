@@ -2,9 +2,10 @@
   "name": "trigger",
   "type": "module",
   "scripts": {
-    "dev": "trigger dev",
-    "deploy": "trigger deploy",
-    "test": "bun test"
+    "dev": "npx trigger.dev@latest dev",
+    "deploy": "bun run typecheck && npx trigger.dev@latest deploy",
+    "typecheck": "tsc --noEmit",
+    "test": "bun run typecheck && bun test"
   },
   "dependencies": {
     "@trigger.dev/sdk": "^4",
@@ -14,6 +15,7 @@
     "p-limit": "^6.2.0"
   },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "typescript": "^5"
   }
 }

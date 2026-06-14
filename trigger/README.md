@@ -43,4 +43,13 @@ npx trigger.dev@latest dev
 bun test
 ```
 
+`bun test` runs `tsc --noEmit` first (the `typecheck` script), then the unit suite,
+so a type error fails the run before any test executes. Run the typecheck alone with:
+
+```bash
+bun run typecheck
+```
+
+`bun run deploy` also typechecks before invoking `npx trigger.dev@latest deploy`.
+
 The unit suite does not require a real Trigger.dev project reference or live API keys.

@@ -11,6 +11,9 @@ import { defineConfig } from "@trigger.dev/sdk";
 export default defineConfig({
   project: "proj_REPLACE_ME",
   dirs: ["./src/trigger"],
+  // Max wall-clock seconds a single run may take before Trigger.dev cancels it.
+  // Story generation fans out across multiple LLM + image calls, so allow 10 min.
+  maxDuration: 600,
   retries: {
     default: {
       maxAttempts: 3,

@@ -5,6 +5,10 @@ export interface JsonSchema {
   required?: string[];
   description?: string;
   enum?: string[];
+  additionalProperties?: boolean;
+  // Allow extra keys so the schema is structurally assignable to the
+  // `Record<string, unknown>` shapes the OpenAI/Anthropic SDKs expect.
+  [key: string]: unknown;
 }
 
 export interface LlmRequest {
@@ -16,7 +20,9 @@ export interface LlmRequest {
 }
 
 export interface LlmResponse {
-  data: Record<string, unknown>;
+  // Object schemas return a keyed object; array schemas return an array. Use
+  // `unknown` so both are representable without an unsafe cast at the boundary.
+  data: unknown;
 }
 
 export interface ImageRequest {

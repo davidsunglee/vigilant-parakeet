@@ -93,6 +93,6 @@ export class OpenAiLlmAdapter implements ILlmProvider {
 
     const data = JSON.parse(content);
     // Unwrap the envelope if we wrapped the schema
-    return { data: needsWrapping ? (data.result as Record<string, unknown>) : data };
+    return { data: needsWrapping ? data.result : data };
   }
 }
