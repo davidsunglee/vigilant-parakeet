@@ -1,3 +1,6 @@
+// Duplicated from apex/src/types/story.types.ts — keep in sync.
+// Image fields (`coverImageUrl`, `IPageContent.imageUrl`) now hold Supabase Storage paths, not base64.
+
 export interface IBiologicalStats {
   weight: string;
   length: string;
@@ -90,32 +93,3 @@ export interface IStoryManifestLite {
 
 // Utility pattern for Prompt Engineering mapping
 export type PromptStructure<T> = Record<keyof T, undefined>;
-
-/**
- * Lifecycle status of a story row in the Postgres `stories` catalog.
- */
-export type StoryStatus = 'generating' | 'ready' | 'failed';
-
-/**
- * Shape of a row in the Supabase `stories` table. Image fields hold Supabase
- * Storage paths (e.g. `stories/{id}/cover.png`), not base64 data URIs; the full
- * page/manifest content lives in the `manifest` JSONB column once generation
- * completes server-side.
- */
-export interface StoryRecord {
-  id: string;
-  owner_id: string;
-  status: StoryStatus;
-  animal_a: string;
-  animal_b: string;
-  title: string | null;
-  art_style: string;
-  fierce_mode: boolean;
-  cover_image_path: string | null;
-  manifest: IStoryManifest | null;
-  progress_step: string | null;
-  progress_pct: number;
-  error: string | null;
-  created_at: string;
-  updated_at: string;
-}

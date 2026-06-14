@@ -1,76 +1,82 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Dashboard } from './Dashboard';
-import { createMockStory, createMockStoryWithSurprise } from '../../test/fixtures';
-import { AiConfigProvider } from '../../contexts/AiConfigContext';
+import { createMockStoryRecord } from '../../test/fixtures';
+import type { StoryChangeHandler } from '../../services/CatalogService';
 
 // --- Mocks ---
 
-vi.mock('../../services/StorageService', () => ({
-  StorageService: {
-    getAllManifests: vi.fn(),
-    getAllStories: vi.fn(),
-    saveStory: vi.fn(),
+// The Realtime subscription handler captured from subscribeToStories so tests
+// can dispatch fake postgres_changes payloads.
+let realtimeHandler: StoryChangeHandler | null = null;
+
+vi.mock('../../services/CatalogService', () => ({
+  CatalogService: {
+    listStories: vi.fn(),
+    subscribeToStories: vi.fn(),
+    createStory: vi.fn(),
+    resolveSignedUrls: vi.fn(),
     deleteStory: vi.fn(),
-    getStory: vi.fn(),
-    updateStory: vi.fn(),
-    markAsRead: vi.fn(),
-    getStoryPages: vi.fn(),
   },
 }));
 
-vi.mock('../../services/StoryGeneratorService', () => ({
-  StoryGeneratorService: {
-    generateStory: vi.fn(),
-  },
+// Dashboard reads the signed-in user via useAuth; supply a stable user.
+vi.mock('../../contexts/AuthContext', () => ({
+  useAuth: () => ({
+    user: { id: 'owner-1' },
+    session: null,
+    loading: false,
+    signInWithEmail: vi.fn(),
+    signInWithGoogle: vi.fn(),
+    signOut: vi.fn(),
+  }),
 }));
 
-// Import mocked modules after vi.mock so we can reference the mocked fns
-import { StorageService } from '../../services/StorageService';
-import { StoryGeneratorService } from '../../services/StoryGeneratorService';
+// Dashboard uses supabase.removeChannel on unmount; mock the browser client so
+// the real createClient never runs in tests.
+vi.mock('../../lib/supabase', () => ({
+  supabase: { removeChannel: vi.fn() },
+}));
 
-const mockGetAllManifests = StorageService.getAllManifests as ReturnType<typeof vi.fn>;
-const mockSaveStory = StorageService.saveStory as ReturnType<typeof vi.fn>;
-const mockDeleteStory = StorageService.deleteStory as ReturnType<typeof vi.fn>;
-const mockGenerateStory = StoryGeneratorService.generateStory as ReturnType<typeof vi.fn>;
+import { CatalogService } from '../../services/CatalogService';
 
-// --- Helpers ---
-
-/** Creates a mock manifest-lite from a full story (strips pages) */
-function toLite(story: ReturnType<typeof createMockStory>) {
-  const { pages, ...lite } = story;
-  return lite;
-}
-
-function renderDashboard(onReadStory = vi.fn()) {
-  // Mock fetch for AiConfigProvider's /api/providers call
-  vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-    new Response(JSON.stringify({ llm: ['anthropic', 'openai'], image: ['gemini'] })),
-  );
-
-  return render(
-    <AiConfigProvider>
-      <Dashboard onReadStory={onReadStory} />
-    </AiConfigProvider>,
-  );
-}
+const mockListStories = CatalogService.listStories as ReturnType<typeof vi.fn>;
+const mockSubscribe = CatalogService.subscribeToStories as ReturnType<typeof vi.fn>;
+const mockCreateStory = CatalogService.createStory as ReturnType<typeof vi.fn>;
+const mockResolveSignedUrls = CatalogService.resolveSignedUrls as ReturnType<typeof vi.fn>;
+const mockDeleteStory = CatalogService.deleteStory as ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
-  vi.restoreAllMocks();
-  mockGetAllManifests.mockReset();
-  mockSaveStory.mockReset();
+  realtimeHandler = null;
+  mockListStories.mockReset();
+  mockSubscribe.mockReset();
+  mockCreateStory.mockReset();
+  mockResolveSignedUrls.mockReset();
   mockDeleteStory.mockReset();
-  mockGenerateStory.mockReset();
+
+  mockListStories.mockResolvedValue([]);
+  mockResolveSignedUrls.mockResolvedValue({});
+  mockSubscribe.mockImplementation((_userId: string, handler: StoryChangeHandler) => {
+    realtimeHandler = handler;
+    return { unsubscribe: vi.fn() };
+  });
 });
 
-// --- Tests ---
+function renderDashboard(onReadStory = vi.fn()) {
+  return render(<Dashboard onReadStory={onReadStory} />);
+}
+
+/** Dispatch a fake Realtime payload through the captured handler. */
+function dispatchRealtime(payload: unknown) {
+  act(() => {
+    realtimeHandler?.(payload as Parameters<StoryChangeHandler>[0]);
+  });
+}
 
 describe('Dashboard', () => {
-  // ---- Rendering ----
-
   describe('rendering', () => {
     it('shows "Your library is empty" when there are no stories', async () => {
-      mockGetAllManifests.mockResolvedValue([]);
+      mockListStories.mockResolvedValue([]);
       renderDashboard();
 
       await waitFor(() => {
@@ -78,112 +84,192 @@ describe('Dashboard', () => {
       });
     });
 
-    it('renders story cards with animal names, title, and date', async () => {
-      const story = createMockStory();
-      mockGetAllManifests.mockResolvedValue([toLite(story)]);
+    it('subscribes to owner-filtered Realtime changes on mount', async () => {
       renderDashboard();
-
       await waitFor(() => {
-        expect(screen.getByText('Lion')).toBeInTheDocument();
+        expect(mockSubscribe).toHaveBeenCalledWith('owner-1', expect.any(Function));
       });
-
-      expect(screen.getByText('Tiger')).toBeInTheDocument();
-      expect(screen.getByText(story.metadata.title)).toBeInTheDocument();
-      expect(
-        screen.getByText(new Date(story.metadata.createdAt).toLocaleDateString()),
-      ).toBeInTheDocument();
-    });
-
-    it('renders cover image with lazy loading attributes when coverImageUrl exists', async () => {
-      const story = createMockStory({ coverImageUrl: 'http://example.com/cover.png' });
-      mockGetAllManifests.mockResolvedValue([toLite(story)]);
-      renderDashboard();
-
-      await waitFor(() => {
-        const img = screen.getByAltText('Lion vs Tiger');
-        expect(img).toBeInTheDocument();
-        expect(img).toHaveAttribute('src', 'http://example.com/cover.png');
-        // #4: Lazy loading attributes
-        expect(img).toHaveAttribute('loading', 'lazy');
-        expect(img).toHaveAttribute('decoding', 'async');
-      });
-    });
-
-    it('does not render img when coverImageUrl is missing', async () => {
-      const story = createMockStory({ coverImageUrl: undefined });
-      mockGetAllManifests.mockResolvedValue([toLite(story)]);
-      renderDashboard();
-
-      await waitFor(() => {
-        expect(screen.getByText('Lion')).toBeInTheDocument();
-      });
-
-      expect(screen.queryByAltText('Lion vs Tiger')).not.toBeInTheDocument();
     });
   });
 
-  // ---- Form ----
-
-  describe('form', () => {
-    it('disables generate button when inputs are empty', async () => {
-      mockGetAllManifests.mockResolvedValue([]);
+  describe('status-aware cards', () => {
+    it('renders a generating row with a progress bar and the progress step', async () => {
+      const generating = createMockStoryRecord({
+        id: 'gen-1',
+        status: 'generating',
+        title: null,
+        manifest: null,
+        cover_image_path: null,
+        progress_step: 'Illustrating the pages…',
+        progress_pct: 42,
+        animal_a: 'Wolf',
+        animal_b: 'Bear',
+      });
+      mockListStories.mockResolvedValue([generating]);
       renderDashboard();
 
       await waitFor(() => {
-        expect(screen.getByText(/your library is empty/i)).toBeInTheDocument();
+        expect(screen.getByText('Illustrating the pages…')).toBeInTheDocument();
       });
 
-      const btn = screen.getByRole('button', { name: /generate story/i });
-      expect(btn).toBeDisabled();
+      const bar = screen.getByRole('progressbar');
+      expect(bar).toHaveAttribute('aria-valuenow', '42');
+      expect(
+        screen.queryByRole('button', { name: /read full book/i }),
+      ).not.toBeInTheDocument();
     });
 
-    it('enables generate button when both inputs have values', async () => {
-      const user = userEvent.setup();
-      mockGetAllManifests.mockResolvedValue([]);
-      renderDashboard();
+    it('renders a ready row with the signed cover URL, a Read button, and reveal-winner', async () => {
+      const ready = createMockStoryRecord(); // status 'ready', cover path, manifest
+      mockListStories.mockResolvedValue([ready]);
+      mockResolveSignedUrls.mockResolvedValue({
+        'stories/story-1/cover.png': 'https://signed/cover.png',
+      });
+      const onReadStory = vi.fn();
+      renderDashboard(onReadStory);
 
       await waitFor(() => {
-        expect(screen.getByText(/your library is empty/i)).toBeInTheDocument();
+        const img = screen.getByAltText('Lion vs Tiger');
+        expect(img).toHaveAttribute('src', 'https://signed/cover.png');
       });
 
-      await user.type(screen.getByPlaceholderText(/animal a/i), 'Lion');
-      await user.type(screen.getByPlaceholderText(/animal b/i), 'Tiger');
+      const readBtn = screen.getByRole('button', { name: /read full book/i });
+      const user = userEvent.setup();
+      await user.click(readBtn);
+      expect(onReadStory).toHaveBeenCalledWith('story-1');
 
-      const btn = screen.getByRole('button', { name: /generate story/i });
-      expect(btn).toBeEnabled();
+      // Reveal winner reads from manifest.outcome (winnerId 'animalA' => Lion)
+      await user.click(screen.getByRole('button', { name: /reveal winner/i }));
+      expect(screen.getByText(/winner: lion/i)).toBeInTheDocument();
     });
 
-    it('disables inputs during generation', async () => {
-      const user = userEvent.setup();
-      mockGetAllManifests.mockResolvedValue([]);
-      // generateStory never resolves, keeping isGenerating true
-      mockGenerateStory.mockReturnValue(new Promise(() => {}));
+    it('renders a failed row with its error and offers no Read button', async () => {
+      const failed = createMockStoryRecord({
+        id: 'fail-1',
+        status: 'failed',
+        title: null,
+        manifest: null,
+        cover_image_path: null,
+        error: 'API quota exceeded',
+      });
+      mockListStories.mockResolvedValue([failed]);
+      renderDashboard();
+
+      await waitFor(() => {
+        expect(screen.getByText(/api quota exceeded/i)).toBeInTheDocument();
+      });
+
+      expect(
+        screen.queryByRole('button', { name: /read full book/i }),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /retry/i })).not.toBeInTheDocument();
+    });
+  });
+
+  describe('realtime transitions', () => {
+    it('moves a row from generating to ready on a Realtime UPDATE', async () => {
+      const generating = createMockStoryRecord({
+        id: 'story-1',
+        status: 'generating',
+        title: null,
+        manifest: null,
+        cover_image_path: null,
+        progress_step: 'Writing the narrative…',
+        progress_pct: 60,
+      });
+      mockListStories.mockResolvedValue([generating]);
+      mockResolveSignedUrls.mockResolvedValue({
+        'stories/story-1/cover.png': 'https://signed/cover.png',
+      });
+      renderDashboard();
+
+      await waitFor(() => {
+        expect(screen.getByRole('progressbar')).toBeInTheDocument();
+      });
+
+      const ready = createMockStoryRecord({ id: 'story-1', status: 'ready' });
+      dispatchRealtime({ eventType: 'UPDATE', new: ready, old: generating });
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole('button', { name: /read full book/i }),
+        ).toBeInTheDocument();
+      });
+      expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
+    });
+
+    it('prepends a new row on a Realtime INSERT (deduped by id)', async () => {
+      mockListStories.mockResolvedValue([]);
       renderDashboard();
 
       await waitFor(() => {
         expect(screen.getByText(/your library is empty/i)).toBeInTheDocument();
       });
 
-      const inputA = screen.getByPlaceholderText(/animal a/i);
-      const inputB = screen.getByPlaceholderText(/animal b/i);
+      const inserted = createMockStoryRecord({
+        id: 'new-1',
+        status: 'generating',
+        title: null,
+        manifest: null,
+        cover_image_path: null,
+        progress_step: 'Queued…',
+        progress_pct: 0,
+        animal_a: 'Eagle',
+        animal_b: 'Hawk',
+      });
+      dispatchRealtime({ eventType: 'INSERT', new: inserted, old: {} });
 
+      await waitFor(() => {
+        expect(screen.getByText('Eagle')).toBeInTheDocument();
+      });
+      // Dispatching the same id again does not duplicate the card.
+      dispatchRealtime({ eventType: 'INSERT', new: inserted, old: {} });
+      expect(screen.getAllByText('Eagle')).toHaveLength(1);
+    });
+  });
+
+  describe('form submission', () => {
+    it('calls createStory with the form values and clears the form (non-blocking)', async () => {
+      const user = userEvent.setup();
+      mockListStories.mockResolvedValue([]);
+      mockCreateStory.mockResolvedValue('story-xyz');
+      renderDashboard();
+
+      await waitFor(() => {
+        expect(screen.getByText(/your library is empty/i)).toBeInTheDocument();
+      });
+
+      await user.selectOptions(screen.getByLabelText(/art style/i), 'watercolor');
+      await user.click(screen.getByLabelText(/fierce mode/i));
+      const inputA = screen.getByPlaceholderText(/animal a/i) as HTMLInputElement;
+      const inputB = screen.getByPlaceholderText(/animal b/i) as HTMLInputElement;
       await user.type(inputA, 'Lion');
       await user.type(inputB, 'Tiger');
       await user.click(screen.getByRole('button', { name: /generate story/i }));
 
       await waitFor(() => {
-        expect(inputA).toBeDisabled();
-        expect(inputB).toBeDisabled();
+        expect(mockCreateStory).toHaveBeenCalledWith({
+          animalA: 'Lion',
+          animalB: 'Tiger',
+          artStyle: 'watercolor',
+          fierceMode: true,
+        });
       });
+
+      // Form clears and visual controls reset after submit.
+      await waitFor(() => {
+        expect(inputA).toHaveValue('');
+        expect(inputB).toHaveValue('');
+      });
+      expect(screen.getByLabelText(/art style/i)).toHaveValue('surprise');
+      expect(screen.getByLabelText(/fierce mode/i)).not.toBeChecked();
     });
 
-    it('calls StoryGeneratorService.generateStory with progress callback on form submission', async () => {
+    it('does not render a full-screen blocking generation overlay', async () => {
       const user = userEvent.setup();
-      const newStory = createMockStory();
-      mockGetAllManifests.mockResolvedValue([]);
-      mockGenerateStory.mockResolvedValue(newStory);
-      mockSaveStory.mockResolvedValue(undefined);
-
+      mockListStories.mockResolvedValue([]);
+      // createStory never resolves; the UI must stay interactive regardless.
+      mockCreateStory.mockReturnValue(new Promise(() => {}));
       renderDashboard();
 
       await waitFor(() => {
@@ -194,237 +280,39 @@ describe('Dashboard', () => {
       await user.type(screen.getByPlaceholderText(/animal b/i), 'Tiger');
       await user.click(screen.getByRole('button', { name: /generate story/i }));
 
-      await waitFor(() => {
-        expect(mockGenerateStory).toHaveBeenCalledWith(
-          expect.objectContaining({ llmProvider: expect.any(String) }),
-          'Lion',
-          'Tiger',
-          expect.objectContaining({ artStyle: 'surprise', fierceMode: false }),
-          expect.any(Function), // #7: progress callback
-        );
-      });
-    });
-
-    it('shows alert on generation error', async () => {
-      const user = userEvent.setup();
-      mockGetAllManifests.mockResolvedValue([]);
-      mockGenerateStory.mockRejectedValue(new Error('API failed'));
-      vi.spyOn(console, 'error').mockImplementation(() => {});
-      const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
-
-      renderDashboard();
-
-      await waitFor(() => {
-        expect(screen.getByText(/your library is empty/i)).toBeInTheDocument();
-      });
-
-      await user.type(screen.getByPlaceholderText(/animal a/i), 'Lion');
-      await user.type(screen.getByPlaceholderText(/animal b/i), 'Tiger');
-      await user.click(screen.getByRole('button', { name: /generate story/i }));
-
-      await waitFor(() => {
-        expect(alertSpy).toHaveBeenCalledWith('Failed to generate story.');
-      });
-    });
-
-    it('optimistically appends new story after generation (#13)', async () => {
-      const user = userEvent.setup();
-      const newStory = createMockStory();
-      mockGetAllManifests.mockResolvedValue([]);
-      mockGenerateStory.mockResolvedValue(newStory);
-      mockSaveStory.mockResolvedValue(undefined);
-
-      renderDashboard();
-
-      await waitFor(() => {
-        expect(screen.getByText(/your library is empty/i)).toBeInTheDocument();
-      });
-
-      await user.type(screen.getByPlaceholderText(/animal a/i), 'Lion');
-      await user.type(screen.getByPlaceholderText(/animal b/i), 'Tiger');
-      await user.click(screen.getByRole('button', { name: /generate story/i }));
-
-      // Story should appear in the UI via optimistic append
-      await waitFor(() => {
-        expect(screen.getByText(newStory.metadata.title)).toBeInTheDocument();
-      });
-
-      // getAllManifests should have been called only once (initial load), not after generation
-      expect(mockGetAllManifests).toHaveBeenCalledTimes(1);
+      expect(screen.queryByText(/creating your book/i)).not.toBeInTheDocument();
+      // Library remains interactive: the art-style picker is still enabled.
+      expect(screen.getByLabelText(/art style/i)).toBeEnabled();
     });
   });
-
-  // ---- Generation Overlay ----
-
-  describe('generation overlay', () => {
-    it('shows overlay during generation', async () => {
-      const user = userEvent.setup();
-      mockGetAllManifests.mockResolvedValue([]);
-      mockGenerateStory.mockReturnValue(new Promise(() => {}));
-      renderDashboard();
-
-      await waitFor(() => {
-        expect(screen.getByText(/your library is empty/i)).toBeInTheDocument();
-      });
-
-      await user.type(screen.getByPlaceholderText(/animal a/i), 'Lion');
-      await user.type(screen.getByPlaceholderText(/animal b/i), 'Tiger');
-      await user.click(screen.getByRole('button', { name: /generate story/i }));
-
-      await waitFor(() => {
-        expect(screen.getByText('Creating Your Book')).toBeInTheDocument();
-      });
-    });
-
-    it('shows animal names in overlay', async () => {
-      const user = userEvent.setup();
-      mockGetAllManifests.mockResolvedValue([]);
-      mockGenerateStory.mockReturnValue(new Promise(() => {}));
-      renderDashboard();
-
-      await waitFor(() => {
-        expect(screen.getByText(/your library is empty/i)).toBeInTheDocument();
-      });
-
-      await user.type(screen.getByPlaceholderText(/animal a/i), 'Elephant');
-      await user.type(screen.getByPlaceholderText(/animal b/i), 'Rhino');
-      await user.click(screen.getByRole('button', { name: /generate story/i }));
-
-      await waitFor(() => {
-        expect(screen.getByText('Creating Your Book')).toBeInTheDocument();
-      });
-
-      const versus = screen.getByText(/elephant/i).closest('.generation-versus');
-      expect(versus).toHaveTextContent(/elephant/i);
-      expect(versus).toHaveTextContent(/rhino/i);
-    });
-
-    it('shows a progress bar with role="progressbar" (#7)', async () => {
-      const user = userEvent.setup();
-      mockGetAllManifests.mockResolvedValue([]);
-      mockGenerateStory.mockReturnValue(new Promise(() => {}));
-      renderDashboard();
-
-      await waitFor(() => {
-        expect(screen.getByText(/your library is empty/i)).toBeInTheDocument();
-      });
-
-      await user.type(screen.getByPlaceholderText(/animal a/i), 'Lion');
-      await user.type(screen.getByPlaceholderText(/animal b/i), 'Tiger');
-      await user.click(screen.getByRole('button', { name: /generate story/i }));
-
-      await waitFor(() => {
-        const bar = screen.getByRole('progressbar');
-        expect(bar).toBeInTheDocument();
-      });
-    });
-  });
-
-  // ---- Delete ----
 
   describe('delete', () => {
-    it('optimistically removes story from UI immediately', async () => {
+    it('optimistically removes a story from the UI', async () => {
       const user = userEvent.setup();
-      const story = createMockStory();
-      mockGetAllManifests.mockResolvedValue([toLite(story)]);
-      // deleteStory never resolves so we can test optimistic removal
+      const ready = createMockStoryRecord();
+      mockListStories.mockResolvedValue([ready]);
+      mockResolveSignedUrls.mockResolvedValue({
+        'stories/story-1/cover.png': 'https://signed/cover.png',
+      });
       mockDeleteStory.mockReturnValue(new Promise(() => {}));
-      vi.spyOn(console, 'log').mockImplementation(() => {});
-
       renderDashboard();
 
       await waitFor(() => {
         expect(screen.getByText('Lion')).toBeInTheDocument();
       });
 
-      const deleteBtn = screen.getByRole('button', { name: /delete story/i });
-      await user.click(deleteBtn);
+      await user.click(screen.getByRole('button', { name: /delete story/i }));
 
       await waitFor(() => {
-        expect(screen.queryByText(story.metadata.title)).not.toBeInTheDocument();
+        expect(screen.queryByText('Lion')).not.toBeInTheDocument();
       });
-    });
-
-    it('reloads stories when delete fails', async () => {
-      const user = userEvent.setup();
-      const story = createMockStory();
-      mockGetAllManifests.mockResolvedValue([toLite(story)]);
-      mockDeleteStory.mockRejectedValue(new Error('Delete failed'));
-      vi.spyOn(console, 'error').mockImplementation(() => {});
-      vi.spyOn(console, 'log').mockImplementation(() => {});
-
-      renderDashboard();
-
-      await waitFor(() => {
-        expect(screen.getByText('Lion')).toBeInTheDocument();
-      });
-
-      // Record calls before delete
-      const callsBefore = mockGetAllManifests.mock.calls.length;
-
-      const deleteBtn = screen.getByRole('button', { name: /delete story/i });
-      await user.click(deleteBtn);
-
-      // After delete fails, loadStories is called again (at least one more time)
-      await waitFor(() => {
-        expect(mockGetAllManifests.mock.calls.length).toBeGreaterThan(callsBefore);
-      });
+      expect(mockDeleteStory).toHaveBeenCalledWith('story-1');
     });
   });
-
-  // ---- Winner Reveal ----
-
-  describe('winner reveal', () => {
-    it('shows "Reveal Winner" button initially', async () => {
-      const story = createMockStory();
-      mockGetAllManifests.mockResolvedValue([toLite(story)]);
-      renderDashboard();
-
-      await waitFor(() => {
-        expect(screen.getByText(/reveal winner/i)).toBeInTheDocument();
-      });
-    });
-
-    it('toggles to show winner name on click', async () => {
-      const user = userEvent.setup();
-      const story = createMockStory(); // winnerId is 'animalA' => Lion
-      mockGetAllManifests.mockResolvedValue([toLite(story)]);
-      renderDashboard();
-
-      await waitFor(() => {
-        expect(screen.getByText(/reveal winner/i)).toBeInTheDocument();
-      });
-
-      await user.click(screen.getByText(/reveal winner/i));
-
-      await waitFor(() => {
-        expect(screen.getByText(/winner: lion/i)).toBeInTheDocument();
-      });
-    });
-
-    it('shows "None (Surprise!)" for surprise ending', async () => {
-      const user = userEvent.setup();
-      const story = createMockStoryWithSurprise();
-      mockGetAllManifests.mockResolvedValue([toLite(story)]);
-      renderDashboard();
-
-      await waitFor(() => {
-        expect(screen.getByText(/reveal winner/i)).toBeInTheDocument();
-      });
-
-      await user.click(screen.getByText(/reveal winner/i));
-
-      await waitFor(() => {
-        expect(screen.getByText(/none \(surprise!\)/i)).toBeInTheDocument();
-      });
-    });
-  });
-
-  // ---- Art Style Picker ----
 
   describe('art style picker', () => {
-    it('renders the art style picker in the primary input area with Surprise Me selected by default', async () => {
-      mockGetAllManifests.mockResolvedValue([]);
+    it('renders the six art style options in order', async () => {
+      mockListStories.mockResolvedValue([]);
       renderDashboard();
 
       await waitFor(() => {
@@ -432,21 +320,8 @@ describe('Dashboard', () => {
       });
 
       const select = screen.getByLabelText(/art style/i) as HTMLSelectElement;
-      expect(select).toBeInTheDocument();
-      expect(select.value).toBe('surprise');
-    });
-
-    it('renders the six art style options in the specified order', async () => {
-      mockGetAllManifests.mockResolvedValue([]);
-      renderDashboard();
-
-      await waitFor(() => {
-        expect(screen.getByText(/your library is empty/i)).toBeInTheDocument();
-      });
-
-      const select = screen.getByLabelText(/art style/i) as HTMLSelectElement;
-      const optionLabels = Array.from(select.options).map((o) => o.textContent);
-      expect(optionLabels).toEqual([
+      const labels = Array.from(select.options).map((o) => o.textContent);
+      expect(labels).toEqual([
         'Surprise Me',
         'Watercolor',
         'Colored Pencil Sketch',
@@ -456,60 +331,8 @@ describe('Dashboard', () => {
       ]);
     });
 
-    it('disables the art style picker during generation', async () => {
-      const user = userEvent.setup();
-      mockGetAllManifests.mockResolvedValue([]);
-      mockGenerateStory.mockReturnValue(new Promise(() => {}));
-      renderDashboard();
-
-      await waitFor(() => {
-        expect(screen.getByText(/your library is empty/i)).toBeInTheDocument();
-      });
-
-      await user.type(screen.getByPlaceholderText(/animal a/i), 'Lion');
-      await user.type(screen.getByPlaceholderText(/animal b/i), 'Tiger');
-      await user.click(screen.getByRole('button', { name: /generate story/i }));
-
-      await waitFor(() => {
-        expect(screen.getByLabelText(/art style/i)).toBeDisabled();
-      });
-    });
-
-    it('passes the selected art style to generateStory', async () => {
-      const user = userEvent.setup();
-      const newStory = createMockStory();
-      mockGetAllManifests.mockResolvedValue([]);
-      mockGenerateStory.mockResolvedValue(newStory);
-      mockSaveStory.mockResolvedValue(undefined);
-
-      renderDashboard();
-
-      await waitFor(() => {
-        expect(screen.getByText(/your library is empty/i)).toBeInTheDocument();
-      });
-
-      await user.selectOptions(screen.getByLabelText(/art style/i), 'watercolor');
-      await user.type(screen.getByPlaceholderText(/animal a/i), 'Lion');
-      await user.type(screen.getByPlaceholderText(/animal b/i), 'Tiger');
-      await user.click(screen.getByRole('button', { name: /generate story/i }));
-
-      await waitFor(() => {
-        expect(mockGenerateStory).toHaveBeenCalledWith(
-          expect.any(Object),
-          'Lion',
-          'Tiger',
-          expect.objectContaining({ artStyle: 'watercolor', fierceMode: false }),
-          expect.any(Function),
-        );
-      });
-    });
-  });
-
-  // ---- Fierce Mode ----
-
-  describe('fierce mode', () => {
-    it('renders the Fierce Mode toggle in Advanced Options, default off', async () => {
-      mockGetAllManifests.mockResolvedValue([]);
+    it('renders the Fierce Mode toggle, default off', async () => {
+      mockListStories.mockResolvedValue([]);
       renderDashboard();
 
       await waitFor(() => {
@@ -517,134 +340,23 @@ describe('Dashboard', () => {
       });
 
       const toggle = screen.getByLabelText(/fierce mode/i) as HTMLInputElement;
-      expect(toggle).toBeInTheDocument();
       expect(toggle.type).toBe('checkbox');
       expect(toggle.checked).toBe(false);
     });
-
-    it('disables the Fierce Mode toggle during generation', async () => {
-      const user = userEvent.setup();
-      mockGetAllManifests.mockResolvedValue([]);
-      mockGenerateStory.mockReturnValue(new Promise(() => {}));
-      renderDashboard();
-
-      await waitFor(() => {
-        expect(screen.getByText(/your library is empty/i)).toBeInTheDocument();
-      });
-
-      await user.type(screen.getByPlaceholderText(/animal a/i), 'Lion');
-      await user.type(screen.getByPlaceholderText(/animal b/i), 'Tiger');
-      await user.click(screen.getByRole('button', { name: /generate story/i }));
-
-      await waitFor(() => {
-        expect(screen.getByLabelText(/fierce mode/i)).toBeDisabled();
-      });
-    });
-
-    it('passes Fierce Mode through to generateStory when enabled', async () => {
-      const user = userEvent.setup();
-      const newStory = createMockStory();
-      mockGetAllManifests.mockResolvedValue([]);
-      mockGenerateStory.mockResolvedValue(newStory);
-      mockSaveStory.mockResolvedValue(undefined);
-
-      renderDashboard();
-
-      await waitFor(() => {
-        expect(screen.getByText(/your library is empty/i)).toBeInTheDocument();
-      });
-
-      await user.click(screen.getByLabelText(/fierce mode/i));
-      await user.type(screen.getByPlaceholderText(/animal a/i), 'Lion');
-      await user.type(screen.getByPlaceholderText(/animal b/i), 'Tiger');
-      await user.click(screen.getByRole('button', { name: /generate story/i }));
-
-      await waitFor(() => {
-        expect(mockGenerateStory).toHaveBeenCalledWith(
-          expect.any(Object),
-          'Lion',
-          'Tiger',
-          expect.objectContaining({ fierceMode: true }),
-          expect.any(Function),
-        );
-      });
-    });
-
-    it('resets visual controls to defaults after successful generation', async () => {
-      const user = userEvent.setup();
-      const newStory = createMockStory();
-      mockGetAllManifests.mockResolvedValue([]);
-      mockGenerateStory.mockResolvedValue(newStory);
-      mockSaveStory.mockResolvedValue(undefined);
-
-      renderDashboard();
-
-      await waitFor(() => {
-        expect(screen.getByText(/your library is empty/i)).toBeInTheDocument();
-      });
-
-      await user.selectOptions(screen.getByLabelText(/art style/i), 'graphic-novel');
-      await user.click(screen.getByLabelText(/fierce mode/i));
-      await user.type(screen.getByPlaceholderText(/animal a/i), 'Lion');
-      await user.type(screen.getByPlaceholderText(/animal b/i), 'Tiger');
-      await user.click(screen.getByRole('button', { name: /generate story/i }));
-
-      await waitFor(() => {
-        expect(mockSaveStory).toHaveBeenCalledWith(newStory);
-      });
-
-      expect(screen.getByLabelText(/art style/i)).toHaveValue('surprise');
-      expect(screen.getByLabelText(/fierce mode/i)).not.toBeChecked();
-    });
   });
 
-  // ---- Advanced Options ----
-
-  describe('advanced options', () => {
-    it('shows LLM provider selector when multiple providers available', async () => {
-      mockGetAllManifests.mockResolvedValue([]);
+  describe('provider/model picker removal', () => {
+    it('does not render any LLM/image provider or model selector', async () => {
+      mockListStories.mockResolvedValue([]);
       renderDashboard();
 
       await waitFor(() => {
         expect(screen.getByText(/your library is empty/i)).toBeInTheDocument();
       });
 
-      // Wait for providers to load (anthropic + openai)
-      await waitFor(() => {
-        expect(screen.getByLabelText(/llm provider/i)).toBeInTheDocument();
-      });
-    });
-
-    it('updates config when selector changes', async () => {
-      const user = userEvent.setup();
-      const newStory = createMockStory();
-      mockGetAllManifests.mockResolvedValue([]);
-      mockGenerateStory.mockResolvedValue(newStory);
-      mockSaveStory.mockResolvedValue(undefined);
-
-      renderDashboard();
-
-      await waitFor(() => {
-        expect(screen.getByLabelText(/llm provider/i)).toBeInTheDocument();
-      });
-
-      const select = screen.getByLabelText(/llm provider/i);
-      await user.selectOptions(select, 'openai');
-
-      // Now generate to verify the config was passed with the new provider
-      await user.type(screen.getByPlaceholderText(/animal a/i), 'Lion');
-      await user.type(screen.getByPlaceholderText(/animal b/i), 'Tiger');
-      await user.click(screen.getByRole('button', { name: /generate story/i }));
-
-      await waitFor(() => {
-        expect(mockGenerateStory).toHaveBeenCalledWith(
-          expect.objectContaining({ llmProvider: 'openai' }),
-          'Lion',
-          'Tiger',
-          expect.objectContaining({ artStyle: 'surprise', fierceMode: false }),
-          expect.any(Function),
-        );
-      });
+      expect(screen.queryByLabelText(/llm provider/i)).not.toBeInTheDocument();
+      expect(screen.queryByLabelText(/image provider/i)).not.toBeInTheDocument();
+      expect(screen.queryByLabelText(/image model/i)).not.toBeInTheDocument();
     });
   });
 });

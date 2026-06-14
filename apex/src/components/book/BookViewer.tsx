@@ -2,23 +2,30 @@ import React, { useEffect, useState, useRef } from 'react';
 import HTMLFlipBook from 'react-pageflip';
 import { ChevronLeft, ChevronRight, X, CheckCircle, Info } from 'lucide-react';
 import { IStoryManifest } from '../../types/story.types';
-import { StorageService } from '../../services/StorageService';
+import { CatalogService } from '../../services/CatalogService';
 import './BookViewer.css';
 
 export const BookViewer: React.FC<{ storyId: string; onClose: () => void }> = ({ storyId, onClose }) => {
     const [story, setStory] = useState<IStoryManifest | null>(null);
+    const [signed, setSigned] = useState<Record<string, string>>({});
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const bookRef = useRef<any>(null);
 
     useEffect(() => {
         const loadStory = async () => {
-            const data = await StorageService.getStory(storyId);
-            if (data) {
-                setStory(data);
-                // #8: Use markAsRead instead of updateStory to avoid redundant read
-                if (!data.metadata.hasBeenRead) {
-                    await StorageService.markAsRead(storyId);
-                }
+            const record = await CatalogService.getStory(storyId);
+            if (!record.manifest) return;
+            const manifest = record.manifest;
+            setStory(manifest);
+
+            const paths: string[] = [];
+            if (manifest.coverImageUrl) paths.push(manifest.coverImageUrl);
+            for (const page of manifest.pages) {
+                if (page.imageUrl) paths.push(page.imageUrl);
+            }
+            if (paths.length > 0) {
+                const signedMap = await CatalogService.resolveSignedUrls(paths);
+                setSigned(signedMap);
             }
         };
         loadStory();
@@ -71,9 +78,9 @@ export const BookViewer: React.FC<{ storyId: string; onClose: () => void }> = ({
                     >
                         {/* Front Cover */}
                         <div className="page page-cover">
-                            {story.coverImageUrl && (
+                            {story.coverImageUrl && signed[story.coverImageUrl] && (
                                 <img
-                                    src={story.coverImageUrl}
+                                    src={signed[story.coverImageUrl]}
                                     alt="Cover"
                                     className="book-cover-image"
                                     loading="lazy"
@@ -102,9 +109,9 @@ export const BookViewer: React.FC<{ storyId: string; onClose: () => void }> = ({
 
                                     <div className="page-media-layout">
                                         <div className="visual-content">
-                                            {page.imageUrl ? (
+                                            {page.imageUrl && signed[page.imageUrl] ? (
                                                 <img
-                                                    src={page.imageUrl}
+                                                    src={signed[page.imageUrl]}
                                                     alt="Generated Illustration"
                                                     className="generated-image"
                                                     loading="lazy"

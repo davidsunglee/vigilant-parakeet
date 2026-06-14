@@ -1,4 +1,4 @@
-import { IStoryManifest } from '../types/story.types';
+import { IStoryManifest, StoryRecord } from '../types/story.types';
 
 export function createMockStory(overrides: Partial<IStoryManifest> = {}): IStoryManifest {
   return {
@@ -56,6 +56,32 @@ export function createMockStory(overrides: Partial<IStoryManifest> = {}): IStory
       isSurpriseEnding: false,
       endingType: 'Standard Victory',
     },
+  };
+}
+
+/**
+ * Builds a mock `stories` row (the Supabase `StoryRecord` shape). Defaults to a
+ * `ready` story whose `manifest` is a full `createMockStory()` and whose
+ * `cover_image_path` is a Storage path. Override any column via `overrides`.
+ */
+export function createMockStoryRecord(overrides: Partial<StoryRecord> = {}): StoryRecord {
+  return {
+    id: 'story-1',
+    owner_id: 'owner-1',
+    status: 'ready',
+    animal_a: 'Lion',
+    animal_b: 'Tiger',
+    title: 'Who Would Win? Lion vs. Tiger',
+    art_style: 'surprise',
+    fierce_mode: false,
+    cover_image_path: 'stories/story-1/cover.png',
+    manifest: createMockStory(),
+    progress_step: null,
+    progress_pct: 100,
+    error: null,
+    created_at: '2026-06-14T00:00:00.000Z',
+    updated_at: '2026-06-14T00:00:00.000Z',
+    ...overrides,
   };
 }
 

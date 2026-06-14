@@ -1,26 +1,41 @@
 import { useState, lazy, Suspense } from 'react';
 import { Dashboard } from './components/dashboard/Dashboard';
-import { AiConfigProvider } from './contexts/AiConfigContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { SignIn } from './components/auth/SignIn';
 
 const BookViewer = lazy(() =>
   import('./components/book/BookViewer').then((m) => ({ default: m.BookViewer }))
 );
 
-function App() {
+function AppContent() {
+  const { user, loading, signOut } = useAuth();
   const [currentStoryId, setCurrentStoryId] = useState<string | null>(null);
 
+  if (loading) return null;
+
+  if (!user) return <SignIn />;
+
   return (
-    <AiConfigProvider>
-      <main>
-        {currentStoryId ? (
-          <Suspense fallback={<div>Loading book...</div>}>
-            <BookViewer storyId={currentStoryId} onClose={() => setCurrentStoryId(null)} />
-          </Suspense>
-        ) : (
-          <Dashboard onReadStory={setCurrentStoryId} />
-        )}
-      </main>
-    </AiConfigProvider>
+    <main>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '0.5rem 1rem' }}>
+        <button onClick={signOut}>Sign out</button>
+      </div>
+      {currentStoryId ? (
+        <Suspense fallback={<div>Loading book...</div>}>
+          <BookViewer storyId={currentStoryId} onClose={() => setCurrentStoryId(null)} />
+        </Suspense>
+      ) : (
+        <Dashboard onReadStory={setCurrentStoryId} />
+      )}
+    </main>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }
 

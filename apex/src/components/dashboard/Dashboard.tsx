@@ -1,90 +1,104 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { BookOpen, Search, Sparkles, Trash2, Trophy, Loader, Eye } from 'lucide-react';
-import { IStoryManifestLite } from '../../types/story.types';
+import { BookOpen, Search, Sparkles, Trash2, Trophy, Eye, AlertTriangle } from 'lucide-react';
+import { StoryRecord } from '../../types/story.types';
 import { ART_STYLE_OPTIONS, ArtStyleId } from '../../types/artStyle';
-import { StorageService } from '../../services/StorageService';
-import { StoryGeneratorService } from '../../services/StoryGeneratorService';
-import { useAiConfig } from '../../contexts/AiConfigContext';
-
-// #14: Static generation messages moved to module scope
-const GENERATION_MESSAGES = [
-    { emoji: '\u{1F52C}', text: 'Researching animal profiles...' },
-    { emoji: '\u{1F4CA}', text: 'Analyzing biological stats...' },
-    { emoji: '\u{1F9E0}', text: 'Comparing intelligence levels...' },
-    { emoji: '\u2694\uFE0F', text: 'Simulating the showdown...' },
-    { emoji: '\u{1F3A8}', text: 'Illustrating the pages...' },
-    { emoji: '\u{1F5BC}\uFE0F', text: 'Generating cover art...' },
-    { emoji: '\u270D\uFE0F', text: 'Writing the narrative...' },
-    { emoji: '\u{1F4D6}', text: 'Binding the book...' },
-] as const;
+import { CatalogService } from '../../services/CatalogService';
+import { useAuth } from '../../contexts/AuthContext';
+import { supabase } from '../../lib/supabase';
 
 // Example animal list for simple auto-complete/search proxy
 const commonAnimals = ['Lion', 'Tiger', 'Polar Bear', 'Grizzly Bear', 'Great White Shark', 'Killer Whale', 'Komodo Dragon', 'King Cobra', 'Hippopotamus', 'Rhinoceros', 'Tarantula', 'Scorpion', 'T-Rex', 'Velociraptor'];
 
-const IMAGE_MODELS: Record<string, { value: string; label: string }[]> = {
-    gemini: [
-        { value: 'gemini-3.1-flash-image-preview', label: 'Gemini 3.1 Flash' },
-        { value: 'gemini-2.5-flash-image', label: 'Gemini 2.5 Flash' },
-    ],
-    openai: [
-        { value: 'gpt-image-2', label: 'GPT Image 2' },
-        { value: 'gpt-image-1', label: 'GPT Image 1' },
-        { value: 'dall-e-3', label: 'DALL-E 3' },
-    ],
-};
+/** Resolves the human-readable winner label from a ready story's manifest. */
+function winnerLabel(story: StoryRecord): string {
+    const outcome = story.manifest?.outcome;
+    if (!outcome) return 'Unknown';
+    if (outcome.winnerId === 'none') return 'None (Surprise!)';
+    if (outcome.winnerId === 'animalA') {
+        return story.manifest?.animalA.commonName ?? story.animal_a;
+    }
+    return story.manifest?.animalB.commonName ?? story.animal_b;
+}
 
-// #6: Memoized StoryCard component
+// #6: Memoized StoryCard component — renders one of three status-aware layouts.
 const StoryCard = React.memo<{
-    story: IStoryManifestLite;
+    story: StoryRecord;
+    coverUrl?: string;
     isWinnerRevealed: boolean;
     onToggleWinner: (id: string) => void;
     onReadStory: (id: string) => void;
     onDelete: (id: string) => void;
-}>(({ story, isWinnerRevealed, onToggleWinner, onReadStory, onDelete }) => (
+}>(({ story, coverUrl, isWinnerRevealed, onToggleWinner, onReadStory, onDelete }) => (
     <div className="story-card">
         <div className="story-card-inner">
             <div className="custom-cover">
-                {story.coverImageUrl ? (
+                {story.status === 'ready' && coverUrl ? (
                     <img
-                        src={story.coverImageUrl}
-                        alt={`${story.animalA.commonName} vs ${story.animalB.commonName}`}
+                        src={coverUrl}
+                        alt={`${story.animal_a} vs ${story.animal_b}`}
                         className="cover-image"
                         loading="lazy"
                         decoding="async"
                     />
                 ) : null}
                 <div className="cover-overlay">
-                    <h3>{story.animalA.commonName}</h3>
+                    <h3>{story.animal_a}</h3>
                     <span className="cover-vs">VS</span>
-                    <h3>{story.animalB.commonName}</h3>
+                    <h3>{story.animal_b}</h3>
                 </div>
             </div>
             <div className="story-info">
-                <h4>{story.metadata.title}</h4>
-                <p className="date">{new Date(story.metadata.createdAt).toLocaleDateString()}</p>
+                <h4>{story.title ?? `${story.animal_a} vs ${story.animal_b}`}</h4>
+                <p className="date">{new Date(story.created_at).toLocaleDateString()}</p>
 
-                {isWinnerRevealed ? (
-                    <button
-                        className="winner-badge"
-                        onClick={(e) => { e.stopPropagation(); onToggleWinner(story.metadata.id); }}
-                    >
-                        <Trophy size={14} /> Winner: {story.outcome.winnerId === 'none' ? 'None (Surprise!)' : (story.outcome.winnerId === 'animalA' ? story.animalA.commonName : story.animalB.commonName)}
-                    </button>
-                ) : (
-                    <button
-                        className="reveal-winner-btn"
-                        onClick={(e) => { e.stopPropagation(); onToggleWinner(story.metadata.id); }}
-                    >
-                        <Eye size={14} /> Reveal Winner
-                    </button>
+                {story.status === 'generating' && (
+                    <div className="story-progress">
+                        <div className="story-progress-track">
+                            <div
+                                className="story-progress-bar"
+                                style={{ width: `${story.progress_pct}%` }}
+                                role="progressbar"
+                                aria-valuenow={story.progress_pct}
+                                aria-valuemin={0}
+                                aria-valuemax={100}
+                            />
+                        </div>
+                        <p className="story-progress-step">{story.progress_step ?? 'Working…'}</p>
+                    </div>
+                )}
+
+                {story.status === 'ready' && (
+                    isWinnerRevealed ? (
+                        <button
+                            className="winner-badge"
+                            onClick={(e) => { e.stopPropagation(); onToggleWinner(story.id); }}
+                        >
+                            <Trophy size={14} /> Winner: {winnerLabel(story)}
+                        </button>
+                    ) : (
+                        <button
+                            className="reveal-winner-btn"
+                            onClick={(e) => { e.stopPropagation(); onToggleWinner(story.id); }}
+                        >
+                            <Eye size={14} /> Reveal Winner
+                        </button>
+                    )
+                )}
+
+                {story.status === 'failed' && (
+                    <div className="story-error" role="alert">
+                        <AlertTriangle size={14} /> Generation failed: {story.error ?? 'Unknown error'}
+                    </div>
                 )}
             </div>
             <div className="card-actions">
-                <button onClick={() => onReadStory(story.metadata.id)} className="read-btn">
-                    <BookOpen size={16} /> Read Full Book
-                </button>
+                {story.status === 'ready' && (
+                    <button onClick={() => onReadStory(story.id)} className="read-btn">
+                        <BookOpen size={16} /> Read Full Book
+                    </button>
+                )}
                 <button
-                    onClick={(e) => { e.stopPropagation(); onDelete(story.metadata.id); }}
+                    onClick={(e) => { e.stopPropagation(); onDelete(story.id); }}
                     className="delete-btn"
                     aria-label="Delete Story"
                 >
@@ -97,19 +111,16 @@ const StoryCard = React.memo<{
 StoryCard.displayName = 'StoryCard';
 
 export const Dashboard: React.FC<{ onReadStory: (id: string) => void }> = ({ onReadStory }) => {
-    const [stories, setStories] = useState<IStoryManifestLite[]>([]);
+    const { user } = useAuth();
+    const [stories, setStories] = useState<StoryRecord[]>([]);
     const [animalA, setAnimalA] = useState('');
     const [animalB, setAnimalB] = useState('');
     const [artStyle, setArtStyle] = useState<ArtStyleId>('surprise');
     const [fierceMode, setFierceMode] = useState(false);
-    const [isGenerating, setIsGenerating] = useState(false);
-    const [generationStep, setGenerationStep] = useState(0);
+    const [submitting, setSubmitting] = useState(false);
     const [revealedWinners, setRevealedWinners] = useState<Set<string>>(new Set());
-    const { config, setConfig, availableProviders } = useAiConfig();
-
-    // #7: Progress state
-    const [progressStep, setProgressStep] = useState('');
-    const [progressPct, setProgressPct] = useState(0);
+    // Resolved signed URLs for ready-story cover thumbnails, keyed by Storage path.
+    const [coverUrls, setCoverUrls] = useState<Record<string, string>>({});
 
     // #6: Memoized callbacks
     const toggleWinnerReveal = useCallback((id: string) => {
@@ -121,83 +132,92 @@ export const Dashboard: React.FC<{ onReadStory: (id: string) => void }> = ({ onR
         });
     }, []);
 
-    // #14: Empty dependency array since GENERATION_MESSAGES is at module scope
-    const cycleGenerationStep = useCallback(() => {
-        setGenerationStep(prev => (prev + 1) % GENERATION_MESSAGES.length);
+    // Reconcile a Realtime postgres_changes payload into local state.
+    const onChange = useCallback((payload: import('@supabase/supabase-js').RealtimePostgresChangesPayload<StoryRecord>) => {
+        setStories(prev => {
+            if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+                const row = payload.new as StoryRecord;
+                if (prev.some(s => s.id === row.id)) {
+                    return prev.map(s => (s.id === row.id ? row : s));
+                }
+                return [row, ...prev];
+            }
+            if (payload.eventType === 'DELETE') {
+                const oldId = (payload.old as Partial<StoryRecord>).id;
+                return prev.filter(s => s.id !== oldId);
+            }
+            return prev;
+        });
     }, []);
 
-    useEffect(() => {
-        if (!isGenerating) {
-            setGenerationStep(0);
-            return;
-        }
-        const interval = setInterval(cycleGenerationStep, 3500);
-        return () => clearInterval(interval);
-    }, [isGenerating, cycleGenerationStep]);
-
-    const loadStories = async () => {
-        const data = await StorageService.getAllManifests();
+    const loadStories = useCallback(async () => {
+        const data = await CatalogService.listStories();
         setStories(data);
-    };
+    }, []);
 
+    // Initial load + owner-filtered Realtime subscription.
     useEffect(() => {
         loadStories();
-    }, []);
+        if (!user) return;
+        const channel = CatalogService.subscribeToStories(user.id, onChange);
+        return () => { supabase.removeChannel(channel); };
+    }, [user?.id, onChange, loadStories]);
 
-    // #6: Memoized handleGenerate
+    // Batch-resolve signed cover URLs for ready rows with a cover path.
+    const readyCoverPaths = useMemo(
+        () => stories
+            .filter(s => s.status === 'ready' && s.cover_image_path)
+            .map(s => s.cover_image_path as string),
+        [stories],
+    );
+
+    useEffect(() => {
+        if (readyCoverPaths.length === 0) return;
+        let cancelled = false;
+        CatalogService.resolveSignedUrls(readyCoverPaths).then(map => {
+            if (!cancelled) setCoverUrls(prev => ({ ...prev, ...map }));
+        });
+        return () => { cancelled = true; };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [readyCoverPaths.join(',')]);
+
+    // #6: Non-blocking submit — the new generating row arrives via Realtime.
     const handleGenerate = useCallback(async (e: React.FormEvent) => {
         e.preventDefault();
         if (!animalA.trim() || !animalB.trim()) return;
 
-        setIsGenerating(true);
-        setProgressStep('');
-        setProgressPct(0);
+        setSubmitting(true);
         try {
-            // #7: Pass progress callback
-            const newStory = await StoryGeneratorService.generateStory(
-                config, animalA.trim(), animalB.trim(),
-                { artStyle, fierceMode },
-                (step, pct) => { setProgressStep(step); setProgressPct(pct); }
-            );
-            await StorageService.saveStory(newStory);
+            await CatalogService.createStory({
+                animalA: animalA.trim(),
+                animalB: animalB.trim(),
+                artStyle,
+                fierceMode,
+            });
+            // Clear the form immediately; the library stays interactive.
             setAnimalA('');
             setAnimalB('');
             setArtStyle('surprise');
             setFierceMode(false);
-            // #13: Optimistic story append instead of re-reading all from IndexedDB
-            setStories(prev => [newStory, ...prev]);
         } catch (error) {
             console.error(error);
-            alert('Failed to generate story.');
+            alert('Failed to start generation.');
         } finally {
-            setIsGenerating(false);
+            setSubmitting(false);
         }
-    }, [animalA, animalB, artStyle, fierceMode, config]);
+    }, [animalA, animalB, artStyle, fierceMode]);
 
-    // #6: Memoized handleDelete
+    // #6: Memoized handleDelete with optimistic removal.
     const handleDelete = useCallback(async (id: string) => {
-        console.log('[Dashboard] Deleting story:', id);
-        // Optimistically remove from UI immediately
-        setStories(prev => prev.filter(s => s.metadata.id !== id));
+        setStories(prev => prev.filter(s => s.id !== id));
         try {
-            await StorageService.deleteStory(id);
-            console.log('[Dashboard] Story deleted successfully');
+            await CatalogService.deleteStory(id);
         } catch (error) {
             console.error('[Dashboard] Delete failed:', error);
-            // Reload to restore if delete failed
+            // Reload to restore if delete failed.
             await loadStories();
         }
-    }, []);
-
-    // #6: Memoized stories list
-    const sortedStories = useMemo(() => stories, [stories]);
-
-    // Determine display message and percentage for overlay
-    const displayStep = progressStep || GENERATION_MESSAGES[generationStep].text;
-    const displayEmoji = progressStep
-        ? (GENERATION_MESSAGES.find(m => progressStep.includes(m.text.replace('...', '')))?.emoji ?? '\u2699\uFE0F')
-        : GENERATION_MESSAGES[generationStep].emoji;
-    const displayPct = progressPct;
+    }, [loadStories]);
 
     return (
         <div className="dashboard-container">
@@ -217,7 +237,6 @@ export const Dashboard: React.FC<{ onReadStory: (id: string) => void }> = ({ onR
                             value={animalA}
                             onChange={(e) => setAnimalA(e.target.value)}
                             list="animals"
-                            disabled={isGenerating}
                             required
                         />
                     </div>
@@ -230,12 +249,11 @@ export const Dashboard: React.FC<{ onReadStory: (id: string) => void }> = ({ onR
                             value={animalB}
                             onChange={(e) => setAnimalB(e.target.value)}
                             list="animals"
-                            disabled={isGenerating}
                             required
                         />
                     </div>
-                    <button type="submit" disabled={isGenerating || !animalA || !animalB} className="generate-btn">
-                        {isGenerating ? 'Generating Simulation...' : <span><Sparkles size={18} /> Generate Story</span>}
+                    <button type="submit" disabled={submitting || !animalA || !animalB} className="generate-btn">
+                        {submitting ? 'Starting…' : <span><Sparkles size={18} /> Generate Story</span>}
                     </button>
                     <div className="art-style-picker">
                         <label htmlFor="art-style">Art Style:</label>
@@ -243,7 +261,6 @@ export const Dashboard: React.FC<{ onReadStory: (id: string) => void }> = ({ onR
                             id="art-style"
                             value={artStyle}
                             onChange={(e) => setArtStyle(e.target.value as ArtStyleId)}
-                            disabled={isGenerating}
                         >
                             {ART_STYLE_OPTIONS.map((o) => (
                                 <option key={o.id} value={o.id}>{o.label}</option>
@@ -261,56 +278,10 @@ export const Dashboard: React.FC<{ onReadStory: (id: string) => void }> = ({ onR
                                     type="checkbox"
                                     checked={fierceMode}
                                     onChange={(e) => setFierceMode(e.target.checked)}
-                                    disabled={isGenerating}
                                 />
                                 {' '}Fierce Mode
                             </label>
                         </div>
-                        {availableProviders.llm.length > 1 && (
-                            <div className="provider-selector">
-                                <label htmlFor="llm-provider">LLM Provider:</label>
-                                <select
-                                    id="llm-provider"
-                                    value={config.llmProvider}
-                                    onChange={(e) => setConfig({ ...config, llmProvider: e.target.value })}
-                                    disabled={isGenerating}
-                                >
-                                    {availableProviders.llm.map((p) => (
-                                        <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>
-                                    ))}
-                                </select>
-                            </div>
-                        )}
-                        {availableProviders.image.length > 1 && (
-                            <div className="provider-selector">
-                                <label htmlFor="image-provider">Image Provider:</label>
-                                <select
-                                    id="image-provider"
-                                    value={config.imageProvider}
-                                    onChange={(e) => setConfig({ ...config, imageProvider: e.target.value, imageModel: undefined })}
-                                    disabled={isGenerating}
-                                >
-                                    {availableProviders.image.map((p) => (
-                                        <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>
-                                    ))}
-                                </select>
-                            </div>
-                        )}
-                        {IMAGE_MODELS[config.imageProvider] && (
-                            <div className="provider-selector">
-                                <label htmlFor="image-model">Image Model:</label>
-                                <select
-                                    id="image-model"
-                                    value={config.imageModel ?? IMAGE_MODELS[config.imageProvider]?.[0]?.value ?? ''}
-                                    onChange={(e) => setConfig({ ...config, imageModel: e.target.value })}
-                                    disabled={isGenerating}
-                                >
-                                    {IMAGE_MODELS[config.imageProvider].map((m) => (
-                                        <option key={m.value} value={m.value}>{m.label}</option>
-                                    ))}
-                                </select>
-                            </div>
-                        )}
                     </div>
                 </details>
                 <datalist id="animals">
@@ -318,50 +289,21 @@ export const Dashboard: React.FC<{ onReadStory: (id: string) => void }> = ({ onR
                 </datalist>
             </div>
 
-            {isGenerating && (
-                <div className="generation-overlay">
-                    <div className="generation-modal">
-                        <div className="generation-spinner">
-                            <Loader className="spin-icon" size={48} />
-                        </div>
-                        <h3 className="generation-title">Creating Your Book</h3>
-                        <p className="generation-versus">
-                            {animalA || '???'} <span>vs</span> {animalB || '???'}
-                        </p>
-                        <div className="generation-status">
-                            <span className="generation-emoji">{displayEmoji}</span>
-                            <span className="generation-message">{displayStep}</span>
-                        </div>
-                        {/* #7: Real progress bar tied to progressPct */}
-                        <div className="generation-progress-track">
-                            <div
-                                className="generation-progress-bar"
-                                style={{ width: `${displayPct}%` }}
-                                role="progressbar"
-                                aria-valuenow={displayPct}
-                                aria-valuemin={0}
-                                aria-valuemax={100}
-                            />
-                        </div>
-                        <p className="generation-hint">This may take a minute — we're generating AI illustrations for every page!</p>
-                    </div>
-                </div>
-            )}
-
             <div className="stories-section">
-                <h2>Your Library ({sortedStories.length})</h2>
-                {sortedStories.length === 0 ? (
+                <h2>Your Library ({stories.length})</h2>
+                {stories.length === 0 ? (
                     <div className="empty-state">
                         <BookOpen size={48} className="empty-icon" />
                         <p>Your library is empty. Generate a story to begin the ultimate showdown!</p>
                     </div>
                 ) : (
                     <div className="story-grid">
-                        {sortedStories.map(story => (
+                        {stories.map(story => (
                             <StoryCard
-                                key={story.metadata.id}
+                                key={story.id}
                                 story={story}
-                                isWinnerRevealed={revealedWinners.has(story.metadata.id)}
+                                coverUrl={story.cover_image_path ? coverUrls[story.cover_image_path] : undefined}
+                                isWinnerRevealed={revealedWinners.has(story.id)}
                                 onToggleWinner={toggleWinnerReveal}
                                 onReadStory={onReadStory}
                                 onDelete={handleDelete}

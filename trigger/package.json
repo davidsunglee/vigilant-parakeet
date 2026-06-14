@@ -1,0 +1,19 @@
+{
+  "name": "trigger",
+  "type": "module",
+  "scripts": {
+    "dev": "trigger dev",
+    "deploy": "trigger deploy",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@trigger.dev/sdk": "^4",
+    "@anthropic-ai/sdk": "^0.39.0",
+    "openai": "^6.34.0",
+    "@supabase/supabase-js": "^2",
+    "p-limit": "^6.2.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  }
+}

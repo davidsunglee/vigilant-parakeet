@@ -1,6 +1,6 @@
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { BookViewer } from './BookViewer';
-import { createMockStory } from '../../test/fixtures';
+import { createMockStory, createMockStoryRecord } from '../../test/fixtures';
 
 // --- Mocks ---
 
@@ -25,26 +25,50 @@ vi.mock('react-pageflip', () => {
   return { default: HTMLFlipBook };
 });
 
-vi.mock('../../services/StorageService', () => ({
-  StorageService: {
+vi.mock('../../services/CatalogService', () => ({
+  CatalogService: {
     getStory: vi.fn(),
-    updateStory: vi.fn(),
-    markAsRead: vi.fn(),
-    getAllStories: vi.fn(),
-    getAllManifests: vi.fn(),
-    saveStory: vi.fn(),
-    deleteStory: vi.fn(),
-    getStoryPages: vi.fn(),
+    resolveSignedUrls: vi.fn(),
   },
 }));
 
 // Mock the CSS import
 vi.mock('./BookViewer.css', () => ({}));
 
-import { StorageService } from '../../services/StorageService';
+import { CatalogService } from '../../services/CatalogService';
 
-const mockGetStory = StorageService.getStory as ReturnType<typeof vi.fn>;
-const mockMarkAsRead = StorageService.markAsRead as ReturnType<typeof vi.fn>;
+const mockGetStory = CatalogService.getStory as ReturnType<typeof vi.fn>;
+const mockResolveSignedUrls = CatalogService.resolveSignedUrls as ReturnType<typeof vi.fn>;
+
+// Default story record using Storage paths in the manifest
+const defaultManifest = createMockStory({
+  coverImageUrl: 'stories/story-1/cover.png',
+  pages: [
+    {
+      index: 1,
+      title: 'Scientific Classification',
+      bodyText: 'The lion is a large cat.',
+      visualPrompt: 'A majestic lion',
+      imageUrl: 'stories/story-1/1.png',
+      funFact: 'Lions can sleep 20 hours a day!',
+      isLeftPage: true,
+    },
+    {
+      index: 2,
+      title: '',
+      bodyText: 'The tiger is the largest cat species.',
+      visualPrompt: 'A powerful tiger',
+      isLeftPage: false,
+    },
+  ],
+});
+
+const defaultStoryRecord = createMockStoryRecord({ manifest: defaultManifest });
+
+const defaultSignedUrls: Record<string, string> = {
+  'stories/story-1/cover.png': 'https://signed/cover.png',
+  'stories/story-1/1.png': 'https://signed/1.png',
+};
 
 // --- Helpers ---
 
@@ -55,9 +79,13 @@ function renderBookViewer(storyId = 'story-1', onClose = vi.fn()) {
 beforeEach(() => {
   vi.restoreAllMocks();
   mockGetStory.mockReset();
-  mockMarkAsRead.mockReset();
+  mockResolveSignedUrls.mockReset();
   mockFlipNext.mockReset();
   mockFlipPrev.mockReset();
+
+  // Default: happy path with signed URLs
+  mockGetStory.mockResolvedValue(defaultStoryRecord);
+  mockResolveSignedUrls.mockResolvedValue(defaultSignedUrls);
 });
 
 // --- Tests ---
@@ -74,41 +102,11 @@ describe('BookViewer', () => {
     });
 
     it('renders story content after load', async () => {
-      const story = createMockStory();
-      mockGetStory.mockResolvedValue(story);
-      mockMarkAsRead.mockResolvedValue(undefined);
       renderBookViewer();
 
       await waitFor(() => {
-        expect(screen.getByText(story.metadata.title)).toBeInTheDocument();
+        expect(screen.getByText(defaultManifest.metadata.title)).toBeInTheDocument();
       });
-    });
-
-    it('marks story as read using markAsRead when hasBeenRead is false', async () => {
-      const story = createMockStory({
-        metadata: { id: 'story-1', title: 'Test', createdAt: Date.now(), hasBeenRead: false },
-      });
-      mockGetStory.mockResolvedValue(story);
-      mockMarkAsRead.mockResolvedValue(undefined);
-      renderBookViewer();
-
-      await waitFor(() => {
-        expect(mockMarkAsRead).toHaveBeenCalledWith('story-1');
-      });
-    });
-
-    it('does NOT mark as read when already read', async () => {
-      const story = createMockStory({
-        metadata: { id: 'story-1', title: 'Test', createdAt: Date.now(), hasBeenRead: true },
-      });
-      mockGetStory.mockResolvedValue(story);
-      renderBookViewer();
-
-      await waitFor(() => {
-        expect(screen.getByText(story.metadata.title)).toBeInTheDocument();
-      });
-
-      expect(mockMarkAsRead).not.toHaveBeenCalled();
     });
   });
 
@@ -116,41 +114,33 @@ describe('BookViewer', () => {
 
   describe('front cover', () => {
     it('shows title and animal names', async () => {
-      const story = createMockStory();
-      mockGetStory.mockResolvedValue(story);
-      mockMarkAsRead.mockResolvedValue(undefined);
       renderBookViewer();
 
       await waitFor(() => {
         expect(screen.getByText('Who Would Win?')).toBeInTheDocument();
       });
 
-      // Animal names in the cover combatants section
       const combatants = screen.getByText('Who Would Win?').closest('.page-cover');
       expect(combatants).toHaveTextContent('Lion');
       expect(combatants).toHaveTextContent('Tiger');
     });
 
-    it('renders cover image with lazy loading attributes when coverImageUrl is available', async () => {
-      const story = createMockStory({ coverImageUrl: 'http://example.com/cover.png' });
-      mockGetStory.mockResolvedValue(story);
-      mockMarkAsRead.mockResolvedValue(undefined);
+    it('renders cover image from signed URL with lazy loading attributes', async () => {
       renderBookViewer();
 
       await waitFor(() => {
         const img = screen.getByAltText('Cover');
         expect(img).toBeInTheDocument();
-        expect(img).toHaveAttribute('src', 'http://example.com/cover.png');
-        // #19: Lazy loading attributes
+        expect(img).toHaveAttribute('src', 'https://signed/cover.png');
         expect(img).toHaveAttribute('loading', 'lazy');
         expect(img).toHaveAttribute('decoding', 'async');
       });
     });
 
-    it('does not render img when coverImageUrl is falsy', async () => {
-      const story = createMockStory({ coverImageUrl: undefined });
-      mockGetStory.mockResolvedValue(story);
-      mockMarkAsRead.mockResolvedValue(undefined);
+    it('does not render cover img when coverImageUrl is absent from manifest', async () => {
+      const manifest = createMockStory({ coverImageUrl: undefined });
+      mockGetStory.mockResolvedValue(createMockStoryRecord({ manifest }));
+      mockResolveSignedUrls.mockResolvedValue({});
       renderBookViewer();
 
       await waitFor(() => {
@@ -165,9 +155,6 @@ describe('BookViewer', () => {
 
   describe('pages', () => {
     it('renders all story pages', async () => {
-      const story = createMockStory();
-      mockGetStory.mockResolvedValue(story);
-      mockMarkAsRead.mockResolvedValue(undefined);
       renderBookViewer();
 
       await waitFor(() => {
@@ -177,9 +164,6 @@ describe('BookViewer', () => {
     });
 
     it('shows title on left pages', async () => {
-      const story = createMockStory();
-      mockGetStory.mockResolvedValue(story);
-      mockMarkAsRead.mockResolvedValue(undefined);
       renderBookViewer();
 
       await waitFor(() => {
@@ -187,25 +171,18 @@ describe('BookViewer', () => {
       });
     });
 
-    it('renders generated image with lazy loading attributes when imageUrl exists', async () => {
-      const story = createMockStory();
-      mockGetStory.mockResolvedValue(story);
-      mockMarkAsRead.mockResolvedValue(undefined);
+    it('renders generated image from signed URL with lazy loading attributes', async () => {
       renderBookViewer();
 
       await waitFor(() => {
         const img = screen.getByAltText('Generated Illustration');
-        expect(img).toHaveAttribute('src', 'http://example.com/page1.png');
-        // #19: Lazy loading attributes
+        expect(img).toHaveAttribute('src', 'https://signed/1.png');
         expect(img).toHaveAttribute('loading', 'lazy');
         expect(img).toHaveAttribute('decoding', 'async');
       });
     });
 
     it('shows placeholder when imageUrl is missing', async () => {
-      const story = createMockStory();
-      mockGetStory.mockResolvedValue(story);
-      mockMarkAsRead.mockResolvedValue(undefined);
       renderBookViewer();
 
       await waitFor(() => {
@@ -215,9 +192,6 @@ describe('BookViewer', () => {
     });
 
     it('renders fun fact box when funFact exists', async () => {
-      const story = createMockStory();
-      mockGetStory.mockResolvedValue(story);
-      mockMarkAsRead.mockResolvedValue(undefined);
       renderBookViewer();
 
       await waitFor(() => {
@@ -227,7 +201,7 @@ describe('BookViewer', () => {
     });
 
     it('does not render fun fact box when funFact is falsy', async () => {
-      const story = createMockStory({
+      const manifest = createMockStory({
         pages: [
           {
             index: 1,
@@ -239,8 +213,8 @@ describe('BookViewer', () => {
           },
         ],
       });
-      mockGetStory.mockResolvedValue(story);
-      mockMarkAsRead.mockResolvedValue(undefined);
+      mockGetStory.mockResolvedValue(createMockStoryRecord({ manifest }));
+      mockResolveSignedUrls.mockResolvedValue({});
       renderBookViewer();
 
       await waitFor(() => {
@@ -255,9 +229,6 @@ describe('BookViewer', () => {
 
   describe('checklist', () => {
     it('renders checklist page with trait rows', async () => {
-      const story = createMockStory();
-      mockGetStory.mockResolvedValue(story);
-      mockMarkAsRead.mockResolvedValue(undefined);
       renderBookViewer();
 
       await waitFor(() => {
@@ -269,9 +240,6 @@ describe('BookViewer', () => {
     });
 
     it('shows animal names in checklist header', async () => {
-      const story = createMockStory();
-      mockGetStory.mockResolvedValue(story);
-      mockMarkAsRead.mockResolvedValue(undefined);
       renderBookViewer();
 
       await waitFor(() => {
@@ -286,13 +254,10 @@ describe('BookViewer', () => {
 
   describe('navigation', () => {
     it('calls flipPrev on left arrow key', async () => {
-      const story = createMockStory();
-      mockGetStory.mockResolvedValue(story);
-      mockMarkAsRead.mockResolvedValue(undefined);
       renderBookViewer();
 
       await waitFor(() => {
-        expect(screen.getByText(story.metadata.title)).toBeInTheDocument();
+        expect(screen.getByText(defaultManifest.metadata.title)).toBeInTheDocument();
       });
 
       fireEvent.keyDown(window, { key: 'ArrowLeft' });
@@ -301,13 +266,10 @@ describe('BookViewer', () => {
     });
 
     it('calls flipNext on right arrow key', async () => {
-      const story = createMockStory();
-      mockGetStory.mockResolvedValue(story);
-      mockMarkAsRead.mockResolvedValue(undefined);
       renderBookViewer();
 
       await waitFor(() => {
-        expect(screen.getByText(story.metadata.title)).toBeInTheDocument();
+        expect(screen.getByText(defaultManifest.metadata.title)).toBeInTheDocument();
       });
 
       fireEvent.keyDown(window, { key: 'ArrowRight' });
@@ -316,14 +278,11 @@ describe('BookViewer', () => {
     });
 
     it('calls onClose when close button is clicked', async () => {
-      const story = createMockStory();
-      mockGetStory.mockResolvedValue(story);
-      mockMarkAsRead.mockResolvedValue(undefined);
       const onClose = vi.fn();
       renderBookViewer('story-1', onClose);
 
       await waitFor(() => {
-        expect(screen.getByText(story.metadata.title)).toBeInTheDocument();
+        expect(screen.getByText(defaultManifest.metadata.title)).toBeInTheDocument();
       });
 
       fireEvent.click(screen.getByText(/back to library/i));
@@ -332,16 +291,12 @@ describe('BookViewer', () => {
     });
 
     it('cleans up keydown event listener on unmount', async () => {
-      const story = createMockStory();
-      mockGetStory.mockResolvedValue(story);
-      mockMarkAsRead.mockResolvedValue(undefined);
-
       const removeSpy = vi.spyOn(window, 'removeEventListener');
 
       const { unmount } = renderBookViewer();
 
       await waitFor(() => {
-        expect(screen.getByText(story.metadata.title)).toBeInTheDocument();
+        expect(screen.getByText(defaultManifest.metadata.title)).toBeInTheDocument();
       });
 
       unmount();
@@ -354,9 +309,6 @@ describe('BookViewer', () => {
 
   describe('back cover', () => {
     it('renders "The End" text', async () => {
-      const story = createMockStory();
-      mockGetStory.mockResolvedValue(story);
-      mockMarkAsRead.mockResolvedValue(undefined);
       renderBookViewer();
 
       await waitFor(() => {

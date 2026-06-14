@@ -13,3 +13,8 @@ server/node_modules/
 
 # Superpowers
 .superpowers/
+
+# Trigger local dependencies
+trigger/node_modules/
+supabase/.branches/
+supabase/.temp/
