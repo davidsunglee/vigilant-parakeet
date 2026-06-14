@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient as defaultCreateClient } from "@supabase/supabase-js";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -6,7 +6,21 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-Deno.serve(async (req: Request) => {
+// Injectable dependencies so the handler can be exercised in tests without a
+// live Supabase project, Trigger.dev endpoint, or Deno.env configuration.
+export interface Deps {
+  createClient: typeof defaultCreateClient;
+  fetch: typeof fetch;
+  env: (key: string) => string | undefined;
+}
+
+const defaultDeps: Deps = {
+  createClient: defaultCreateClient,
+  fetch: (input, init) => fetch(input, init),
+  env: (key) => Deno.env.get(key),
+};
+
+export async function handleRequest(req: Request, deps: Deps = defaultDeps): Promise<Response> {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders });
   }
@@ -21,9 +35,9 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+  const supabase = deps.createClient(
+    deps.env("SUPABASE_URL")!,
+    deps.env("SUPABASE_SERVICE_ROLE_KEY")!,
     { auth: { autoRefreshToken: false, persistSession: false } }
   );
 
@@ -89,31 +103,48 @@ Deno.serve(async (req: Request) => {
   // Trigger the Trigger.dev task via REST endpoint.
   // The Deno runtime uses the REST endpoint rather than the Node @trigger.dev/sdk
   // to avoid runtime-compat risk (the SDK is designed for Node and may not run under Deno).
-  const triggerApiUrl = Deno.env.get("TRIGGER_API_URL") ?? "https://api.trigger.dev";
-  const triggerResponse = await fetch(
-    `${triggerApiUrl}/api/v1/tasks/generate-story/trigger`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${Deno.env.get("TRIGGER_SECRET_KEY")}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        payload: {
-          storyId: story.id,
-          ownerId: user.id,
-          animalA,
-          animalB,
-          options: { artStyle, fierceMode },
-          generationConfig: {
-            textModel: "claude-sonnet-4-20250514",
-            imageModel: "gpt-image-2",
-            imageQuality: 'medium',
-          },
+  const triggerApiUrl = deps.env("TRIGGER_API_URL") ?? "https://api.trigger.dev";
+  let triggerResponse: Response;
+  try {
+    triggerResponse = await deps.fetch(
+      `${triggerApiUrl}/api/v1/tasks/generate-story/trigger`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${deps.env("TRIGGER_SECRET_KEY")}`,
+          "Content-Type": "application/json",
         },
-      }),
-    }
-  );
+        body: JSON.stringify({
+          payload: {
+            storyId: story.id,
+            ownerId: user.id,
+            animalA,
+            animalB,
+            options: { artStyle, fierceMode },
+            generationConfig: {
+              textModel: "claude-sonnet-4-20250514",
+              imageModel: "gpt-image-2",
+              imageQuality: 'medium',
+            },
+          },
+        }),
+      }
+    );
+  } catch (err) {
+    // DNS/network/TLS/runtime exceptions never produce a Response, so the
+    // !triggerResponse.ok rollback below cannot run. Best-effort mark the row
+    // as failed so it does not stay stuck in `generating`, then return 502.
+    const message = err instanceof Error ? err.message : String(err);
+    await supabase
+      .from("stories")
+      .update({ status: "failed", error: `Failed to enqueue generation: ${message}` })
+      .eq("id", story.id);
+
+    return new Response(JSON.stringify({ error: "Failed to enqueue generation task" }), {
+      status: 502,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
 
   // Roll back on trigger failure
   if (!triggerResponse.ok) {
@@ -132,4 +163,8 @@ Deno.serve(async (req: Request) => {
     status: 200,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
-});
+}
+
+if (import.meta.main) {
+  Deno.serve((req: Request) => handleRequest(req));
+}
