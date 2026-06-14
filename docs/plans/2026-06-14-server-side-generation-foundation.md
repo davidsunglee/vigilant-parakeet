@@ -114,7 +114,7 @@ fields). See Risk Assessment for the drift mitigation.
 
 ### Modify / replace — Web client (`apex/`)
 
-- `apex/package.json` (Modify) — add `@supabase/supabase-js`; remove `localforage`.
+- `apex/package.json` (Modify) — add `@supabase/supabase-js` (Task 7); remove `localforage` (Task 12, alongside `StorageService`'s deletion — deferred so the dependency outlives no importer and Task 8's `tsc -b` stays green).
 - `apex/src/lib/supabase.ts` (Create) — browser Supabase client from `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`.
 - `apex/src/contexts/AuthContext.tsx` (Create) — session state + `signInWithEmail` / `signInWithGoogle` / `signOut`.
 - `apex/src/components/auth/SignIn.tsx` (Create) — minimal sign-in view (magic link + Google).
@@ -345,7 +345,7 @@ fields). See Risk Assessment for the drift mitigation.
 - Test: `apex/src/contexts/AuthContext.test.tsx`
 
 **Steps:**
-- [ ] **Step 1: Add the dependency** — in `apex/package.json`, add `"@supabase/supabase-js": "^2"` to `dependencies` and remove `"localforage"`. Run `cd apex && npm install`.
+- [ ] **Step 1: Add the dependency** — in `apex/package.json`, add `"@supabase/supabase-js": "^2"` to `dependencies`. Run `cd apex && npm install`. Leave `"localforage"` in `dependencies` for now: `StorageService.ts` still imports it (`import localforage from 'localforage'`) and is not deleted until Task 12, so removing the package here would break the `npx tsc -b` typecheck in Task 8 (which deliberately keeps `StorageService` present). The `localforage` dependency is removed in Task 12 alongside `StorageService`'s deletion, so it never outlives its last importer.
 - [ ] **Step 2: Create the browser client** — `apex/src/lib/supabase.ts`: `export const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_ANON_KEY)`. Add a `vite-env.d.ts` augmentation or rely on the existing `apex/src/vite-env.d.ts` for `ImportMetaEnv` typing of the two vars.
 - [ ] **Step 3: Build `AuthContext`** — `apex/src/contexts/AuthContext.tsx` exporting `AuthProvider` and `useAuth()`. State: `session`, `user`, `loading`. On mount: `supabase.auth.getSession()` then subscribe with `supabase.auth.onAuthStateChange((_e, session) => ...)`; unsubscribe on cleanup. Expose `signInWithEmail(email)` (`supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.origin } })`), `signInWithGoogle()` (`supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin } })`), and `signOut()` (`supabase.auth.signOut()`).
 - [ ] **Step 4: Build `SignIn`** — `apex/src/components/auth/SignIn.tsx`: an email `<input>` + "Send magic link" button calling `signInWithEmail` (show a "Check your email" confirmation on success), and a "Continue with Google" button calling `signInWithGoogle`. Minimal styling in `SignIn.css`.
@@ -484,11 +484,11 @@ Note: the obsolete client services/contexts (`StorageService`, `LlmService`, `Im
 
 **Files:**
 - Delete: `server/` (entire directory), `apex/src/services/StorageService.ts`, `apex/src/services/StorageService.test.ts`, `apex/src/services/LlmService.ts`, `apex/src/services/LlmService.test.ts`, `apex/src/services/ImageService.ts`, `apex/src/services/ImageService.test.ts`, `apex/src/services/StoryGeneratorService.ts`, `apex/src/services/StoryGeneratorService.test.ts`, `apex/src/contexts/AiConfigContext.tsx`, `apex/src/contexts/AiConfigContext.test.tsx`
-- Modify: `README.md`, `apex/README.md`
+- Modify: `apex/package.json`, `README.md`, `apex/README.md`
 
 **Steps:**
 - [ ] **Step 1: Confirm relocation + consumer refactors are complete** — verify the adapters/types now live under `trigger/src/providers/` (Task 3) and the client no longer calls `/api/*` (Tasks 7–10). Grep `apex/src` to be sure no code references `/api/llm`, `/api/image`, or `/api/providers`, AND confirm the consumers were already migrated off the legacy modules: `grep -rln "StoryGeneratorService\|StorageService\|LlmService\|ImageService\|AiConfigContext\|useAiConfig" apex/src/components apex/src/App.tsx` returns no matches (Dashboard from Task 9, BookViewer from Task 10, and App.tsx from Tasks 7/9 are clean before deletion).
-- [ ] **Step 2: Delete the obsolete client services + contexts** — now that no consumer imports them, remove `StorageService`, `LlmService`, `ImageService`, `StoryGeneratorService`, `AiConfigContext` and all their `.test`/`.test.tsx` files (the provider-calling logic moved to `trigger/` in Tasks 3–4; storage/catalog moved to `CatalogService` in Task 8; AiConfig was dropped). Then run `cd apex && npx tsc -b` and confirm exit 0 with no dangling imports of the removed modules.
+- [ ] **Step 2: Delete the obsolete client services + contexts** — now that no consumer imports them, remove `StorageService`, `LlmService`, `ImageService`, `StoryGeneratorService`, `AiConfigContext` and all their `.test`/`.test.tsx` files (the provider-calling logic moved to `trigger/` in Tasks 3–4; storage/catalog moved to `CatalogService` in Task 8; AiConfig was dropped). With `StorageService` (the only `localforage` importer) now gone, remove the `"localforage"` entry from `apex/package.json` `dependencies` (deferred here from Task 7) and run `cd apex && npm install` to prune it from the lockfile. Then run `cd apex && npx tsc -b` and confirm exit 0 with no dangling imports of the removed modules.
 - [ ] **Step 3: Delete the proxy** — remove the entire `server/` directory (Elysia app, routes, providers, tests, `node_modules`, `.env`, `.env.example`).
 - [ ] **Step 4: Update the root README** — in `README.md`, replace the "powered by Google Gemini" line and the architecture pointer with the four-tier stack (Vercel SPA + Supabase + Trigger.dev), and note generation runs server-side in a durable task.
 - [ ] **Step 5: Rewrite the apex README architecture** — in `apex/README.md`, replace the IndexedDB/Gemini-proxy sections (Service Layer, Generation Pipeline, "Offline Persistence" feature, Environment Variables) with: catalog via Supabase/PostgREST + RLS, generation via the Trigger.dev `generate-story` task, images in Supabase Storage rendered via signed URLs, Realtime progress, and the `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY` env vars. Note that provider keys live in Trigger.dev and the service-role/Trigger secret keys live in the Edge Function env.
@@ -501,8 +501,8 @@ Note: the obsolete client services/contexts (`StorageService`, `LlmService`, `Im
   Verify: `ls apex/src/services/StorageService.ts apex/src/services/LlmService.ts apex/src/services/ImageService.ts apex/src/services/StoryGeneratorService.ts apex/src/contexts/AiConfigContext.tsx 2>&1` reports every path as "No such file or directory"; `cd apex && npx tsc -b` exits 0; and `grep -rn "StoryGeneratorService\|StorageService\|LlmService\|ImageService\|AiConfigContext" apex/src --include=*.ts --include=*.tsx` returns no matches.
 - No client code calls provider APIs directly.
   Verify: `grep -rn "/api/llm\|/api/image\|/api/providers" apex/src` returns no matches.
-- No shipped code references IndexedDB/localforage or Elysia.
-  Verify: `grep -rn "localforage" apex/src` returns no matches, and `grep -rn "elysia" apex/src trigger/src` (case-insensitive via `-i`) returns no matches.
+- No shipped code or the client manifest references IndexedDB/localforage or Elysia.
+  Verify: `grep -rn "localforage" apex/src` returns no matches, `grep -c "localforage" apex/package.json` returns `0` (the dependency was removed in Step 2 once `StorageService` was deleted), and `grep -rn "elysia" apex/src trigger/src` (case-insensitive via `-i`) returns no matches.
 - The READMEs describe the new four-tier architecture.
   Verify: `grep -iE "supabase|trigger.dev" README.md apex/README.md` returns at least 2 matches across the two files, and `grep -ic "indexeddb" apex/README.md` returns `0`.
 
