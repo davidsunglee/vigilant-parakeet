@@ -170,7 +170,7 @@ describe('runGenerationPipeline', () => {
     expect(manifest.pages[25].imageUrl).toBe('stories/story-1/32.png');
   });
 
-  it('calls updateProgress at the milestone steps', async () => {
+  it('calls updateProgress at the milestone steps with integer percentages', async () => {
     const { deps, progressCalls } = makeDeps();
     await runGenerationPipeline(deps, PAYLOAD);
 
@@ -183,6 +183,7 @@ describe('runGenerationPipeline', () => {
 
     const perPage = progressCalls.filter(([step]) => /^Illustrating page \d+ of 26\.\.\.$/.test(step));
     expect(perPage).toHaveLength(26);
+    expect(progressCalls.every(([, pct]) => Number.isInteger(pct))).toBe(true);
     expect(progressCalls[progressCalls.length - 1]).toEqual(['Saving your story...', 98]);
   });
 

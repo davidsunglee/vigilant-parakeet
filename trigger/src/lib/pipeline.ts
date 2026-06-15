@@ -270,7 +270,7 @@ Animal B: ${visualAnchor.animalB.fullDescription}`;
         await deps.db.updateProgress(
           storyId,
           `Illustrating page ${completed} of ${total}...`,
-          25 + (completed / total) * 70,
+          Math.round(25 + (completed / total) * 70),
         );
         return { ...page, imageUrl: pagePath };
       }),

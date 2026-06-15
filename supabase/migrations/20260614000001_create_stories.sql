@@ -35,6 +35,10 @@ create trigger stories_set_updated_at
   for each row
   execute function public.set_updated_at();
 
+-- Grant table privileges to API roles; RLS below still scopes authenticated client rows per owner.
+grant select, insert, update, delete on public.stories to authenticated;
+grant select, insert, update, delete on public.stories to service_role;
+
 -- Enable row-level security
 alter table public.stories enable row level security;
 

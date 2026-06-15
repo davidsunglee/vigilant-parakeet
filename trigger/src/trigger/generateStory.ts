@@ -40,6 +40,9 @@ const DEFAULT_IMAGE_QUALITY: GenerationConfig['imageQuality'] = 'medium';
 
 export const generateStory = task({
   id: "generate-story",
+  // Full story generation includes 27 image calls; local smoke runs have shown
+  // shorter timeouts are too tight for OpenAI image generation.
+  maxDuration: 1500,
   retry: { maxAttempts: 3, factor: 2, minTimeoutInMs: 1000, maxTimeoutInMs: 30000 },
   run: async (
     payload: GenerateStoryPayload & { generationConfig?: Partial<GenerationConfig> },

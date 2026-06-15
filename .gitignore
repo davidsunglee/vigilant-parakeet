@@ -16,5 +16,9 @@ server/node_modules/
 
 # Trigger local dependencies
 trigger/node_modules/
+trigger/.env
+trigger/.env.local
+trigger/local.env
+supabase/.env.local
 supabase/.branches/
 supabase/.temp/
