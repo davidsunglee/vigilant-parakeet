@@ -186,6 +186,13 @@ describe('runGenerationPipeline', () => {
     expect(progressCalls[progressCalls.length - 1]).toEqual(['Saving your story...', 98]);
   });
 
+  it('records cover_image_path even when the cover object already exists (skip-if-exists resume)', async () => {
+    const { deps, db } = makeDeps({ imageExists: async () => true });
+    await runGenerationPipeline(deps, PAYLOAD);
+
+    expect(db.setCoverPath).toHaveBeenCalledWith('story-1', 'stories/story-1/cover.png');
+  });
+
   it('skips all image generation when every object already exists (cached resume → 0 generations)', async () => {
     const { deps, image, storage } = makeDeps({ imageExists: async () => true });
     const manifest = await runGenerationPipeline(deps, PAYLOAD);

@@ -145,6 +145,11 @@ Animal B: ${visualAnchor.animalB.fullDescription}`;
   const resolveCover = async (): Promise<string> => {
     const coverPath = `stories/${storyId}/cover.png`;
     if (await deps.storage.imageExists(coverPath)) {
+      // Record the path even on the skip-if-exists branch: a prior attempt may
+      // have uploaded the object but failed before persisting cover_image_path,
+      // and finalize() never sets it. Without this the ready story has no
+      // dashboard thumbnail.
+      await deps.db.setCoverPath(storyId, coverPath);
       return coverPath;
     }
     const base64 = await deps.image.generateImage(coverPrompt, {

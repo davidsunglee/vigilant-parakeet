@@ -37,17 +37,28 @@ export class ImageClient {
           userId: this.userId,
         });
 
-        // Return the raw base64 payload so the caller uploads raw bytes.
-        return (response.imageDataUri || '').replace(BASE64_PREFIX, '');
+        // Return the raw base64 payload so the caller uploads raw bytes. An
+        // empty payload is a bad response, not a success — reject it so it goes
+        // through the retry/failure path rather than uploading a zero-byte PNG.
+        const payload = (response.imageDataUri || '').replace(BASE64_PREFIX, '');
+        if (!payload) {
+          throw new Error('[ImageClient] Adapter returned an empty image payload');
+        }
+        return payload;
       } catch (error) {
         if (attempt < retries - 1) {
           await new Promise((r) => setTimeout(r, 1000 * Math.pow(2, attempt)));
           continue;
         }
+        // Exhausted all retries: propagate so the caller (and Trigger.dev
+        // retry/failure handling) treats this as a terminal generation failure
+        // instead of silently uploading an empty image and finalizing `ready`.
         console.error('[ImageClient] Generation failed:', error);
-        return '';
+        throw error;
       }
     }
-    return '';
+    // Unreachable: the loop either returns a payload or throws on the last
+    // attempt. Retained as a defensive guard for retries <= 0.
+    throw new Error('[ImageClient] Generation produced no image');
   }
 }
