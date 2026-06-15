@@ -271,7 +271,7 @@ export const Dashboard: React.FC<{ onReadStory: (id: string) => void }> = ({ onR
                 <details className="advanced-options">
                     <summary>Advanced Options</summary>
                     <div className="advanced-options-content">
-                        <div className="provider-selector fierce-mode-toggle">
+                        <div className="fierce-mode-toggle">
                             <label htmlFor="fierce-mode">
                                 <input
                                     id="fierce-mode"

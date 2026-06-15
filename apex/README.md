@@ -6,7 +6,7 @@ A generative educational narrative engine that creates illustrated storybooks in
 
 - **Durable Story Generation** — Generations run server-side via Trigger.dev and survive browser closure; checkpointed so retries don't re-pay
 - **AI-Generated Narratives** — 26+ page educational stories with 12 comparative aspects (habitat, size, weapons, speed, intelligence, etc.) via Claude Sonnet 4
-- **AI Illustrations** — Every page gets a unique, children's book-style illustration via GPT-4 Vision (medium quality for cost efficiency)
+- **AI Illustrations** — Every page gets a unique, children's book-style illustration via gpt-image-2 (medium quality for cost efficiency)
 - **Live Progress Tracking** — Real-time progress bar and step indicators via Supabase Realtime while generation runs
 - **Multi-User Library** — Books are catalogued per user, stored securely in Postgres with row-level security (RLS)
 - **Interactive Book Viewer** — Page-flip reading experience powered by `react-pageflip`, rendering from Supabase Storage signed URLs
@@ -71,7 +71,7 @@ StoryRecord {
 1. **User creates story:** Client calls Edge Function via `CatalogService.createStory()`
 2. **Edge Function verifies JWT** and inserts `stories` row with `status='generating'`
 3. **Edge Function triggers Trigger.dev task** and returns the new `storyId` immediately (non-blocking)
-4. **Task runs server-side:** Generates narrative (Claude Sonnet 4) + images (GPT-4 Vision, medium quality), writes progress to `stories` row
+4. **Task runs server-side:** Generates narrative (Claude Sonnet 4) + images (gpt-image-2, medium quality), writes progress to `stories` row
 5. **Client subscribes to Realtime:** Watches `stories` row; displays live progress bar + step text as `progress_pct`/`progress_step` update
 6. **On completion:** Task updates `manifest`, `cover_image_path`, and `status='ready'` → Dashboard transitions card to ready state
 7. **User reads:** BookViewer loads row, resolves Storage paths to signed URLs (1-hour TTL), renders cover + 26 pages
@@ -89,7 +89,7 @@ StoryRecord {
 | **Framework** | React 18 + TypeScript |
 | **Build** | Vite 5 |
 | **AI (Text)** | Claude Sonnet 4 via Anthropic SDK (runs in Trigger.dev, not client) |
-| **AI (Images)** | GPT-4 Vision (medium quality) via OpenAI SDK (runs in Trigger.dev, not client) |
+| **AI (Images)** | gpt-image-2 (medium quality) via OpenAI Images API (runs in Trigger.dev, not client) |
 | **Catalog & Auth** | Supabase (Postgres + Auth + Storage + Realtime) |
 | **Durable Task** | Trigger.dev (runs `generate-story` task server-side with automatic retry) |
 | **Hosting** | Vercel (SPA catch-all rewrite to `/index.html`) |

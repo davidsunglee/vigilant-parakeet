@@ -1,3 +1,4 @@
+import React from 'react';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { BookViewer } from './BookViewer';
 import { createMockStory, createMockStoryRecord } from '../../test/fixtures';
@@ -9,7 +10,6 @@ const mockFlipNext = vi.fn();
 const mockFlipPrev = vi.fn();
 
 vi.mock('react-pageflip', () => {
-  const React = require('react');
   const HTMLFlipBook = React.forwardRef(
     (props: { children: React.ReactNode; className?: string }, ref: React.Ref<unknown>) => {
       React.useImperativeHandle(ref, () => ({
