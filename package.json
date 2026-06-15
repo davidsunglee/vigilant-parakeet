@@ -1,0 +1,6 @@
+{
+  "private": true,
+  "scripts": {
+    "verify": "npm --prefix apex run lint && npm --prefix apex run build && npm --prefix apex run test:run && cd trigger && bun test && cd .. && deno test --config supabase/functions/create-story/deno.json supabase/functions/create-story/index.test.ts"
+  }
+}
