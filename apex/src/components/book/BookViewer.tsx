@@ -1,190 +1,194 @@
-import React, { useEffect, useState, useRef } from 'react';
-import HTMLFlipBook from 'react-pageflip';
-import { ChevronLeft, ChevronRight, X, CheckCircle, Info } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { IStoryManifest } from '../../types/story.types';
 import { CatalogService } from '../../services/CatalogService';
+import { buildViews, BookView } from './views';
+import { BookCover } from './BookCover';
+import { StorySpread } from './StorySpread';
+import { BookPage } from './BookPage';
+import { TaleOfTheTape } from './TaleOfTheTape';
+import { Verdict } from './Verdict';
+import { ClosingPage } from './ClosingPage';
+import { ReaderChrome } from './ReaderChrome';
 import './BookViewer.css';
 
-export const BookViewer: React.FC<{ storyId: string; onClose: () => void }> = ({ storyId, onClose }) => {
-    const [story, setStory] = useState<IStoryManifest | null>(null);
-    const [signed, setSigned] = useState<Record<string, string>>({});
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const bookRef = useRef<any>(null);
+const NARROW_QUERY = '(max-width: 720px)';
 
-    useEffect(() => {
-        const loadStory = async () => {
-            const record = await CatalogService.getStory(storyId);
-            if (!record.manifest) return;
-            const manifest = record.manifest;
-            setStory(manifest);
+function labelFor(view: BookView): string {
+  switch (view.kind) {
+    case 'cover': return 'Cover';
+    case 'spread': return view.title;
+    case 'page': return view.title || '';
+    case 'showdown': return 'The Showdown';
+    case 'tape': return 'Tale of the Tape';
+    case 'verdict': return 'The Verdict';
+    case 'closing': return 'The End';
+  }
+}
 
-            const paths: string[] = [];
-            if (manifest.coverImageUrl) paths.push(manifest.coverImageUrl);
-            for (const page of manifest.pages) {
-                if (page.imageUrl) paths.push(page.imageUrl);
-            }
-            if (paths.length > 0) {
-                const signedMap = await CatalogService.resolveSignedUrls(paths);
-                setSigned(signedMap);
-            }
-        };
-        loadStory();
-    }, [storyId]);
-
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'ArrowLeft') {
-                bookRef.current?.pageFlip()?.flipPrev();
-            } else if (e.key === 'ArrowRight') {
-                bookRef.current?.pageFlip()?.flipNext();
-            }
-        };
-
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, []);
-
-    if (!story) return <div className="loading-book">Loading book...</div>;
-
-    return (
-        <div className="book-viewer-container">
-            <div className="book-toolbar">
-                <button onClick={onClose} className="close-book-btn">
-                    <X size={24} /> Back to Library
-                </button>
-                <div className="book-title">{story.metadata.title}</div>
-            </div>
-
-            <div className="book-canvas-area">
-                <button className="nav-arrow left" aria-label="Previous Page" onClick={() => bookRef.current?.pageFlip()?.flipPrev()}>
-                    <ChevronLeft size={48} />
-                </button>
-
-                <div className="book-wrapper">
-                    <HTMLFlipBook
-                        width={550}
-                        height={733}
-                        size="stretch"
-                        minWidth={315}
-                        maxWidth={1000}
-                        minHeight={420}
-                        maxHeight={1333}
-                        maxShadowOpacity={0.5}
-                        showCover={true}
-                        mobileScrollSupport={true}
-                        ref={bookRef}
-                        className="book-component"
-                        usePortrait={true}
-                    >
-                        {/* Front Cover */}
-                        <div className="page page-cover">
-                            {story.coverImageUrl && signed[story.coverImageUrl] && (
-                                <img
-                                    src={signed[story.coverImageUrl]}
-                                    alt="Cover"
-                                    className="book-cover-image"
-                                    loading="lazy"
-                                    decoding="async"
-                                />
-                            )}
-                            <div className="book-cover-overlay" />
-                            <div className="page-content">
-                                <h2>Who Would Win?</h2>
-                                <div className="cover-combatants">
-                                    <h3>{story.animalA.commonName}</h3>
-                                    <span>vs</span>
-                                    <h3>{story.animalB.commonName}</h3>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Pages 1-32 */}
-                        {story.pages.map((page) => (
-                            <div key={page.index} className={`page ${page.isLeftPage ? 'page-left' : 'page-right'}`}>
-                                <div className="page-content">
-                                    <div className="header-zone">
-                                        {page.isLeftPage && page.title && <h3 className="page-title">{page.title}</h3>}
-                                        <div className="header-accent-line" />
-                                    </div>
-
-                                    <div className="page-media-layout">
-                                        <div className="visual-content">
-                                            {page.imageUrl && signed[page.imageUrl] ? (
-                                                <img
-                                                    src={signed[page.imageUrl]}
-                                                    alt="Generated Illustration"
-                                                    className="generated-image"
-                                                    loading="lazy"
-                                                    decoding="async"
-                                                />
-                                            ) : (
-                                                <div className="placeholder-image">
-                                                    <span>{page.visualPrompt}</span>
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        <div className="text-content">
-                                            <p>{page.bodyText}</p>
-                                        </div>
-
-                                        {page.funFact && (
-                                            <div className="fun-fact-box">
-                                                <h4>
-                                                    <div className="fun-fact-icon-wrapper">
-                                                        <Info size={18} />
-                                                        <div className="fun-fact-tooltip">
-                                                            {page.funFact}
-                                                        </div>
-                                                    </div>
-                                                    Fun Fact
-                                                </h4>
-                                            </div>
-                                        )}
-
-                                        <div className="footer-line" />
-                                        <div className="page-number">{page.index}</div>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-
-                        {/* Checklist Page */}
-                        <div className="page page-checklist">
-                            <div className="page-content">
-                                <h3 className="page-title">Predictions Checklist</h3>
-                                <p>Based on the facts, who has the advantage?</p>
-                                <div className="checklist-grid">
-                                    <div className="checklist-header">
-                                        <span>Trait</span>
-                                        <span>{story.animalA.commonName}</span>
-                                        <span>{story.animalB.commonName}</span>
-                                    </div>
-                                    {story.checklist.items.map((item, idx) => (
-                                        <div className="checklist-row" key={idx}>
-                                            <span className="trait-name">{item.traitName}</span>
-                                            <span className="check-box">{item.animalAAdvantage ? <CheckCircle color="var(--accent-color)" /> : ''}</span>
-                                            <span className="check-box">{item.animalBAdvantage ? <CheckCircle color="var(--accent-color)" /> : ''}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                                <button className="confirm-btn">Confirm Predictions</button>
-                            </div>
-                        </div>
-
-                        {/* Back Cover */}
-                        <div className="page page-cover page-back">
-                            <div className="page-content">
-                                <h2>The End</h2>
-                            </div>
-                        </div>
-                    </HTMLFlipBook>
-                </div>
-
-                <button className="nav-arrow right" aria-label="Next Page" onClick={() => bookRef.current?.pageFlip()?.flipNext()}>
-                    <ChevronRight size={48} />
-                </button>
-            </div>
+function renderView(
+  view: BookView,
+  story: IStoryManifest,
+  signed: Record<string, string>,
+  onReadAgain: () => void,
+  onClose: () => void,
+) {
+  switch (view.kind) {
+    case 'cover':
+      return <BookCover manifest={story} signed={signed} />;
+    case 'spread':
+      return (
+        <StorySpread
+          title={view.title}
+          left={view.left}
+          right={view.right}
+          leftFolio={view.leftFolio}
+          rightFolio={view.rightFolio}
+          signed={signed}
+          leftAlt={story.animalA.commonName}
+          rightAlt={story.animalB.commonName}
+        />
+      );
+    case 'page':
+      return (
+        <div className="rd-single">
+          <BookPage
+            page={view.page}
+            folio={view.folio}
+            side={view.page.isLeftPage ? 'left' : 'right'}
+            title={view.title || undefined}
+            signedUrl={view.page.imageUrl ? signed[view.page.imageUrl] : undefined}
+            imageAlt={view.page.isLeftPage ? story.animalA.commonName : story.animalB.commonName}
+          />
         </div>
+      );
+    case 'showdown': {
+      const url = view.page.imageUrl ? signed[view.page.imageUrl] : undefined;
+      return (
+        <div className="rd-showdown">
+          {url && (
+            <img src={url} alt="The showdown" className="rd-showdown-img" loading="lazy" decoding="async" />
+          )}
+          <div className="rd-showdown-scrim" aria-hidden="true" />
+          <div className="rd-showdown-caption">
+            <span className="rd-showdown-kicker">The Showdown</span>
+            <p>{view.page.bodyText}</p>
+          </div>
+        </div>
+      );
+    }
+    case 'tape':
+      return <TaleOfTheTape manifest={story} />;
+    case 'verdict':
+      return <Verdict manifest={story} outcomePage={view.outcomePage} signed={signed} />;
+    case 'closing':
+      return <ClosingPage manifest={story} onReadAgain={onReadAgain} onClose={onClose} />;
+  }
+}
+
+export const BookViewer: React.FC<{ storyId: string; onClose: () => void }> = ({ storyId, onClose }) => {
+  const [story, setStory] = useState<IStoryManifest | null>(null);
+  const [signed, setSigned] = useState<Record<string, string>>({});
+  const [index, setIndex] = useState(0);
+  const [narrow, setNarrow] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia(NARROW_QUERY).matches,
+  );
+  const touchX = useRef<number | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      const record = await CatalogService.getStory(storyId);
+      if (!active || !record.manifest) return;
+      const manifest = record.manifest;
+      setStory(manifest);
+
+      const paths: string[] = [];
+      if (manifest.coverImageUrl) paths.push(manifest.coverImageUrl);
+      for (const page of manifest.pages) {
+        if (page.imageUrl) paths.push(page.imageUrl);
+      }
+      if (paths.length > 0) {
+        const map = await CatalogService.resolveSignedUrls(paths);
+        if (active) setSigned(map);
+      }
+    };
+    load();
+    return () => {
+      active = false;
+    };
+  }, [storyId]);
+
+  useEffect(() => {
+    const mq = window.matchMedia(NARROW_QUERY);
+    const onChange = (e: MediaQueryListEvent) => setNarrow(e.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+
+  const views: BookView[] = useMemo(() => (story ? buildViews(story, narrow) : []), [story, narrow]);
+
+  useEffect(() => {
+    setIndex((i) => Math.max(0, Math.min(i, views.length - 1)));
+  }, [views.length]);
+
+  const goPrev = useCallback(() => setIndex((i) => Math.max(0, i - 1)), []);
+  const goNext = useCallback(
+    () => setIndex((i) => Math.max(0, Math.min(views.length - 1, i + 1))),
+    [views.length],
+  );
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft') goPrev();
+      else if (e.key === 'ArrowRight') goNext();
+      else if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [goPrev, goNext, onClose]);
+
+  if (!story) {
+    return (
+      <div className="rd reader--journal rd-loading" role="status">
+        <div className="rd-loading-emblem" aria-hidden="true">&amp;</div>
+        <p className="rd-loading-text">Opening the book...</p>
+        <div className="rd-loading-shimmer" aria-hidden="true" />
+      </div>
     );
+  }
+
+  const view = views[index];
+  const matchup = `${story.animalA.commonName} & ${story.animalB.commonName}`;
+  const position = `${index + 1} / ${views.length}`;
+  const progressPct = views.length > 1 ? (index / (views.length - 1)) * 100 : 0;
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    touchX.current = e.changedTouches[0].clientX;
+  };
+  const onTouchEnd = (e: React.TouchEvent) => {
+    if (touchX.current === null) return;
+    const dx = e.changedTouches[0].clientX - touchX.current;
+    if (dx > 50) goPrev();
+    else if (dx < -50) goNext();
+    touchX.current = null;
+  };
+
+  return (
+    <div className="rd reader--journal">
+      <div className="rd-stage" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+        {renderView(view, story, signed, () => setIndex(0), onClose)}
+      </div>
+      <ReaderChrome
+        matchup={matchup}
+        label={labelFor(view)}
+        position={position}
+        progressPct={progressPct}
+        canPrev={index > 0}
+        canNext={index < views.length - 1}
+        onBack={onClose}
+        onPrev={goPrev}
+        onNext={goNext}
+      />
+    </div>
+  );
 };
