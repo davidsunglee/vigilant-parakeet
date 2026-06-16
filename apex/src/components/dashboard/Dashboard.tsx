@@ -86,13 +86,16 @@ export const Dashboard: React.FC<{ onReadStory: (id: string) => void }> = ({ onR
     return () => {
       cancelled = true;
     };
+    // readyCoverPaths is a fresh array on every render; join() gives a stable
+    // string dep that only changes when the set of paths actually changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [readyCoverPaths.join(',')]);
 
-  // Non-blocking submit; the new generating row arrives via Realtime.
+  // Non-blocking submit; the new generating row arrives via Realtime. Closing
+  // the overlay is the caller's concern (see the overlay instance below), so
+  // this stays variant-agnostic and is reused by the inline empty-state form.
   const handleCreate = useCallback(async (input: CreateStoryInput) => {
     await CatalogService.createStory(input);
-    setComposerOpen(false);
   }, []);
 
   // Optimistic delete with reload-on-failure.
@@ -204,7 +207,10 @@ export const Dashboard: React.FC<{ onReadStory: (id: string) => void }> = ({ onR
           {composerOpen && (
             <MatchupComposer
               variant="overlay"
-              onCreate={handleCreate}
+              onCreate={async (input) => {
+                await handleCreate(input);
+                setComposerOpen(false);
+              }}
               onClose={() => setComposerOpen(false)}
             />
           )}

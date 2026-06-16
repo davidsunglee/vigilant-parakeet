@@ -280,7 +280,7 @@ describe('Dashboard', () => {
   });
 
   describe('browse', () => {
-    it('filters by contender name and sorts', async () => {
+    it('filters by contender name', async () => {
       const user = userEvent.setup();
       mockListStories.mockResolvedValue([
         createMockStoryRecord({ id: 's1', title: 'Lion vs Tiger', animal_a: 'Lion', animal_b: 'Tiger', cover_image_path: null }),
@@ -294,6 +294,28 @@ describe('Dashboard', () => {
       await user.type(screen.getByLabelText(/search by name/i), 'orca');
       expect(screen.queryByText('Lion vs Tiger')).not.toBeInTheDocument();
       expect(screen.getByText('Orca vs Shark')).toBeInTheDocument();
+    });
+
+    it('reorders the shelf when the sort control changes (newest default, then A to Z)', async () => {
+      const user = userEvent.setup();
+      mockListStories.mockResolvedValue([
+        createMockStoryRecord({ id: 'z1', title: 'Zebra vs Ant', created_at: '2026-06-15T00:00:00.000Z', cover_image_path: null }),
+        createMockStoryRecord({ id: 'a1', title: 'Aardvark vs Bee', created_at: '2026-06-10T00:00:00.000Z', cover_image_path: null }),
+      ]);
+      renderDashboard();
+
+      await waitFor(() => {
+        expect(screen.getByText('Aardvark vs Bee')).toBeInTheDocument();
+      });
+      // Default newest-first: Zebra (06-15) precedes Aardvark (06-10).
+      expect(
+        screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent),
+      ).toEqual(['Zebra vs Ant', 'Aardvark vs Bee']);
+
+      await user.selectOptions(screen.getByLabelText(/^sort$/i), 'az');
+      expect(
+        screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent),
+      ).toEqual(['Aardvark vs Bee', 'Zebra vs Ant']);
     });
   });
 
