@@ -16,8 +16,7 @@
     "lucide-react": "^0.575.0",
     "p-limit": "^6.2.0",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-pageflip": "^2.0.3"
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.13.0",

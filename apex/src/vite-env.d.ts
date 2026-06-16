@@ -1,5 +1,4 @@
 /// <reference types="vite/client" />
-declare module 'react-pageflip';
 
 interface ImportMetaEnv {
   readonly VITE_SUPABASE_URL: string;
