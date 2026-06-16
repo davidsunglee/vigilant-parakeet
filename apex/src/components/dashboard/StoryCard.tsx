@@ -72,6 +72,7 @@ export const StoryCard = React.memo<StoryCardProps>(function StoryCard({
                   className="rr-pbar"
                   style={{ width: `${story.progress_pct}%` }}
                   role="progressbar"
+                  aria-label="Story generation progress"
                   aria-valuenow={story.progress_pct}
                   aria-valuemin={0}
                   aria-valuemax={100}
