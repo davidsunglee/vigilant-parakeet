@@ -176,7 +176,9 @@ export const BookViewer: React.FC<{ storyId: string; onClose: () => void }> = ({
   return (
     <div className="rd reader--journal">
       <div className="rd-stage" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
-        {renderView(view, story, signed, () => setIndex(0), onClose)}
+        <div className="rd-view" key={index}>
+          {renderView(view, story, signed, () => setIndex(0), onClose)}
+        </div>
       </div>
       <ReaderChrome
         matchup={matchup}
