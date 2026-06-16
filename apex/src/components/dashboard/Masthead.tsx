@@ -46,7 +46,7 @@ export function Masthead({ email, showCompose, onCompose, onSignOut }: MastheadP
       <div className="rr-masthead-right">
         {showCompose && (
           <button type="button" className="apex-btn rr-new-matchup" onClick={onCompose}>
-            <Plus size={16} /> Begin a new matchup
+            <Plus size={16} aria-hidden="true" /> <span>Begin a new matchup</span>
           </button>
         )}
         <div className="rr-account" ref={accountRef}>
@@ -61,16 +61,18 @@ export function Masthead({ email, showCompose, onCompose, onSignOut }: MastheadP
             <span className="rr-sr-only">Account menu</span>
           </button>
           {menuOpen && (
-            <div className="rr-menu" role="menu">
+            <div className="rr-menu">
               {email && <p className="rr-menu-email">{email}</p>}
-              <button
-                type="button"
-                className="rr-menu-item"
-                role="menuitem"
-                onClick={onSignOut}
-              >
-                Sign out
-              </button>
+              <div role="menu">
+                <button
+                  type="button"
+                  className="rr-menu-item"
+                  role="menuitem"
+                  onClick={onSignOut}
+                >
+                  Sign out
+                </button>
+              </div>
             </div>
           )}
         </div>
