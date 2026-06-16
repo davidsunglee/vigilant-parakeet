@@ -8,7 +8,7 @@ const BookViewer = lazy(() =>
 );
 
 function AppContent() {
-  const { user, loading, signOut } = useAuth();
+  const { user, loading } = useAuth();
   const [currentStoryId, setCurrentStoryId] = useState<string | null>(null);
 
   if (loading) return null;
@@ -17,9 +17,6 @@ function AppContent() {
 
   return (
     <main>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '0.5rem 1rem' }}>
-        <button onClick={signOut}>Sign out</button>
-      </div>
       {currentStoryId ? (
         <Suspense fallback={<div>Loading book...</div>}>
           <BookViewer storyId={currentStoryId} onClose={() => setCurrentStoryId(null)} />
