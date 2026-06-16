@@ -27,7 +27,7 @@ export const ART_STYLE_OPTIONS: readonly ArtStyleOption[] = [
     },
     {
         id: 'storybook-painterly',
-        label: 'Storybook Painterly',
+        label: 'Painterly',
         descriptor: 'classic storybook painterly illustration with rich brushwork, warm lighting, soft edges, and gouache-style depth',
     },
     {
