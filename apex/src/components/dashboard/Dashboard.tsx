@@ -7,6 +7,7 @@ import { supabase } from '../../lib/supabase';
 import { Masthead } from './Masthead';
 import { MatchupComposer } from './MatchupComposer';
 import { StoryCard } from './StoryCard';
+import './Dashboard.css';
 
 type SortOrder = 'newest' | 'oldest' | 'az';
 

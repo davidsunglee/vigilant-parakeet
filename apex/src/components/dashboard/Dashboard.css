@@ -1,0 +1,353 @@
+/* The Reading Room: the logged-in dashboard. Built on the --apex-* system. */
+
+.rr {
+  min-height: 100vh;
+  color: var(--apex-ink);
+  font-family: var(--apex-font-ui);
+  background:
+    radial-gradient(130% 100% at 50% -10%,
+      var(--apex-paper-hi) 0%, var(--apex-paper) 78%, var(--apex-paper-lo) 100%);
+  background-attachment: fixed;
+  position: relative;
+}
+
+.rr::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.5;
+  z-index: 0;
+  background-image:
+    radial-gradient(circle at 12% 20%, rgba(120, 90, 40, 0.05) 0 1px, transparent 1px),
+    radial-gradient(circle at 70% 60%, rgba(120, 90, 40, 0.04) 0 1px, transparent 1px);
+  background-size: 7px 7px, 11px 11px;
+}
+
+.rr > * { position: relative; z-index: 1; }
+
+.rr-sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0);
+  white-space: nowrap; border: 0;
+}
+
+/* ---- Masthead ---- */
+.rr-masthead {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.1rem clamp(1rem, 4vw, 2.2rem);
+  border-bottom: 1px solid var(--apex-rule);
+}
+
+.rr-brand { display: flex; align-items: center; gap: 0.7rem; }
+.rr-brand-emblem { width: 38px; height: 38px; font-size: 1.25rem; }
+.rr-wordmark { display: flex; flex-direction: column; line-height: 1.05; }
+.rr-kicker {
+  font-size: 0.6rem; font-weight: 700; letter-spacing: 0.16em;
+  text-transform: uppercase; color: #a8854a;
+}
+.rr-brandname { font-family: var(--apex-font-display); font-weight: 700; font-size: 1.2rem; color: var(--apex-ink); }
+
+.rr-masthead-right { margin-left: auto; display: flex; align-items: center; gap: 0.9rem; }
+
+/* the .apex-btn primitive is full-width; the masthead stamp is auto-width */
+.rr-new-matchup {
+  width: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.6rem 1rem;
+  font-size: 0.9rem;
+  box-shadow: 0 3px 10px rgba(62, 107, 74, 0.25);
+}
+
+.rr-account { position: relative; }
+.rr-avatar {
+  width: 38px; height: 38px; border-radius: 50%;
+  background: linear-gradient(150deg, #e4d6b4, #cdb98a);
+  border: 1px solid var(--apex-field-border);
+  color: var(--apex-brown);
+  font-family: var(--apex-font-display);
+  font-size: 1rem;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+}
+.rr-avatar:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--apex-focus); }
+
+.rr-menu {
+  position: absolute; right: 0; top: calc(100% + 8px);
+  min-width: 200px;
+  background: var(--apex-surface);
+  border: 1px solid var(--apex-field-border);
+  border-radius: var(--apex-radius);
+  box-shadow: 0 12px 30px rgba(40, 25, 10, 0.18);
+  padding: 0.5rem;
+  z-index: 20;
+}
+.rr-menu-email {
+  font-size: 0.78rem; color: var(--apex-brown);
+  padding: 0.35rem 0.5rem 0.5rem;
+  border-bottom: 1px solid var(--apex-rule);
+  word-break: break-all;
+}
+.rr-menu-item {
+  width: 100%; text-align: left;
+  padding: 0.55rem 0.5rem; margin-top: 0.3rem;
+  border-radius: 7px;
+  font-size: 0.9rem; font-weight: 600; color: var(--apex-ink-soft);
+  background: none; cursor: pointer;
+}
+.rr-menu-item:hover { background: #fffdf7; color: var(--apex-ink); }
+.rr-menu-item:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--apex-focus); }
+
+/* ---- Browse bar ---- */
+.rr-browse {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  flex-wrap: wrap; gap: 0.9rem;
+  padding: clamp(1.4rem, 3vw, 2rem) clamp(1rem, 4vw, 2.2rem) 1rem;
+}
+.rr-shelf-title { font-family: var(--apex-font-display); font-size: 1.55rem; font-weight: 700; color: var(--apex-ink); }
+.rr-shelf-title span { font-family: var(--apex-font-ui); font-size: 0.85rem; font-weight: 400; color: var(--apex-brown-mute); margin-left: 0.4rem; }
+
+.rr-browse-controls { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+.rr-search {
+  display: flex; align-items: center; gap: 0.5rem;
+  background: var(--apex-surface);
+  border: 1px solid var(--apex-field-border);
+  border-radius: var(--apex-radius);
+  padding: 0.5rem 0.75rem;
+  color: var(--apex-brown-mute);
+}
+.rr-search input {
+  border: none; background: none; outline: none;
+  font-family: var(--apex-font-ui); font-size: 0.9rem; color: var(--apex-ink);
+  min-width: 9rem;
+}
+.rr-search:focus-within { border-color: var(--apex-forest); box-shadow: 0 0 0 3px var(--apex-focus); }
+.rr-sort {
+  font-family: var(--apex-font-ui); font-size: 0.9rem; font-weight: 600; color: var(--apex-ink-soft);
+  background: var(--apex-surface);
+  border: 1px solid var(--apex-field-border);
+  border-radius: var(--apex-radius);
+  padding: 0.5rem 0.75rem; cursor: pointer;
+}
+.rr-sort:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--apex-focus); }
+
+.rr-no-results { padding: 2rem clamp(1rem, 4vw, 2.2rem); color: var(--apex-brown); font-style: italic; }
+
+/* ---- Gallery ---- */
+.rr-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: clamp(1.3rem, 2.5vw, 1.7rem);
+  padding: 0.5rem clamp(1rem, 4vw, 2.2rem) 3rem;
+}
+
+.rr-card { display: flex; flex-direction: column; }
+.rr-cover {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid rgba(120, 80, 30, 0.22);
+  box-shadow: 0 9px 22px rgba(90, 60, 20, 0.15);
+  background: linear-gradient(160deg, #efe3c5, #e2d1a8);
+}
+.rr-cover-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+
+.rr-card-actions {
+  position: absolute; left: 8px; right: 8px; bottom: 8px;
+  display: flex; gap: 7px;
+  opacity: 0;
+  transition: opacity 0.18s var(--apex-ease);
+}
+.rr-card:hover .rr-card-actions,
+.rr-card:focus-within .rr-card-actions { opacity: 1; }
+.rr-read {
+  flex: 1;
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;
+  background: var(--apex-forest); color: var(--apex-on-forest);
+  border-radius: 7px; padding: 0.55rem; font-size: 0.82rem; font-weight: 700;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); cursor: pointer;
+}
+.rr-read:hover { background: var(--apex-forest-deep); }
+.rr-remove {
+  width: 36px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(253, 250, 241, 0.92);
+  border: 1px solid var(--apex-field-border);
+  border-radius: 7px; color: var(--apex-brown-mute); cursor: pointer;
+}
+.rr-remove:hover { color: var(--apex-error); border-color: var(--apex-error); }
+.rr-read:focus-visible, .rr-remove:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--apex-focus); }
+
+.rr-meta { margin-top: 0.6rem; }
+.rr-title {
+  font-family: var(--apex-font-display); font-size: 0.98rem; font-weight: 700; color: var(--apex-ink);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.rr-date { font-size: 0.72rem; color: var(--apex-brown-mute); margin-top: 0.1rem; }
+
+.rr-reveal, .rr-winner {
+  display: inline-flex; align-items: center; gap: 0.35rem;
+  margin-top: 0.5rem; padding: 0.3rem 0.7rem;
+  border-radius: 20px; font-size: 0.76rem; font-weight: 700; cursor: pointer;
+}
+.rr-reveal { background: var(--apex-surface); border: 1px solid var(--apex-field-border); color: var(--apex-brown); }
+.rr-reveal:hover { border-color: var(--apex-rule); color: var(--apex-ink-soft); }
+.rr-winner {
+  background: rgba(62, 107, 74, 0.12);
+  border: 1px solid rgba(62, 107, 74, 0.3);
+  color: var(--apex-forest);
+}
+.rr-reveal:focus-visible, .rr-winner:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--apex-focus); }
+
+/* generating: on the press */
+.rr-card--generating .rr-cover { background: linear-gradient(160deg, #cfe0d6, #6f9b78); }
+.rr-press { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+.rr-press-amp { font-family: var(--apex-font-display); font-size: 1.9rem; color: var(--apex-gilt); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25); }
+.rr-sweep {
+  position: absolute; top: 0; bottom: 0; width: 42%; left: -42%;
+  background: linear-gradient(100deg, transparent, rgba(255, 250, 230, 0.7), transparent);
+  transform: skewX(-12deg);
+}
+.rr-progress { position: absolute; left: 9px; right: 9px; bottom: 10px; }
+.rr-ptrack { height: 5px; background: rgba(255, 255, 255, 0.35); border-radius: 3px; overflow: hidden; }
+.rr-pbar { height: 100%; background: linear-gradient(90deg, var(--apex-paper-hi), #cfe6d2); border-radius: 3px; transition: width 0.4s var(--apex-ease); }
+.rr-pstep { font-size: 0.66rem; color: #f3fff4; margin-top: 0.3rem; text-align: center; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4); }
+.rr-press-cap {
+  position: absolute; top: 8px; left: 0; right: 0; text-align: center;
+  font-size: 0.58rem; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase;
+  color: rgba(255, 252, 240, 0.85);
+}
+
+/* failed */
+.rr-card--failed .rr-cover { filter: grayscale(0.7) brightness(0.96); }
+.rr-failed { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: linear-gradient(160deg, rgba(60, 50, 40, 0.12), rgba(60, 50, 40, 0.32)); }
+.rr-fail-mark {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: rgba(162, 59, 42, 0.92); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--apex-font-display); font-weight: 800;
+}
+.rr-error { display: flex; align-items: flex-start; gap: 0.3rem; font-size: 0.76rem; color: var(--apex-error); margin-top: 0.45rem; line-height: 1.35; }
+.rr-remove-text {
+  margin-top: 0.45rem; padding: 0.3rem 0.7rem;
+  border: 1px solid var(--apex-field-border); border-radius: 7px;
+  font-size: 0.76rem; font-weight: 600; color: var(--apex-brown-mute);
+  background: var(--apex-surface); cursor: pointer;
+}
+.rr-remove-text:hover { color: var(--apex-error); border-color: var(--apex-error); }
+.rr-remove-text:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--apex-focus); }
+
+/* ---- Empty state ---- */
+.rr-empty {
+  max-width: 420px; margin: 0 auto;
+  padding: clamp(2rem, 6vw, 4rem) 1.5rem;
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+}
+.rr-empty-welcome {
+  font-family: var(--apex-font-serif); font-style: italic;
+  font-size: 1.25rem; color: var(--apex-brown); margin-bottom: 1.2rem;
+}
+
+/* ---- Composer (shared form) ---- */
+.rr-composer-inline { width: 100%; max-width: 400px; }
+.rr-composer {
+  background: var(--apex-surface);
+  border: 1px solid var(--apex-field-border);
+  border-radius: var(--apex-radius);
+  padding: 1.5rem 1.6rem;
+  display: flex; flex-direction: column;
+}
+.rr-composer-emblem { width: 48px; height: 48px; font-size: 1.55rem; align-self: center; margin-bottom: 0.7rem; }
+.rr-composer-kick {
+  text-align: center; text-transform: uppercase; letter-spacing: 0.14em;
+  font-size: 0.68rem; font-weight: 700; color: #a8854a; margin-bottom: 1rem;
+}
+.rr-slots { display: flex; align-items: flex-end; gap: 0.7rem; margin-bottom: 1rem; }
+.rr-slot { flex: 1; display: flex; flex-direction: column; gap: 0.3rem; text-align: left; }
+.rr-slot-label { font-size: 0.72rem; font-weight: 600; color: var(--apex-brown); }
+.rr-slot-amp { font-family: var(--apex-font-display); color: var(--apex-gilt); font-size: 1.6rem; padding-bottom: 0.4rem; }
+
+.rr-styles { border: none; margin-bottom: 0.9rem; }
+.rr-styles-legend { font-size: 0.72rem; font-weight: 600; color: var(--apex-brown); margin-bottom: 0.5rem; }
+.rr-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.rr-chip { position: relative; cursor: pointer; }
+/* clip the input (keeps it in the a11y tree; do NOT use display:none) */
+.rr-chip-input {
+  position: absolute; width: 1px; height: 1px;
+  padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+.rr-chip span {
+  display: inline-block;
+  padding: 0.32rem 0.7rem; border-radius: 20px;
+  border: 1px solid var(--apex-field-border);
+  background: #fff; color: var(--apex-brown); font-size: 0.78rem; font-weight: 600;
+  transition: background 0.15s var(--apex-ease), color 0.15s var(--apex-ease), border-color 0.15s var(--apex-ease);
+}
+.rr-chip.is-on span { background: var(--apex-forest); color: var(--apex-on-forest); border-color: var(--apex-forest); }
+.rr-chip-input:focus-visible + span { outline: none; box-shadow: 0 0 0 3px var(--apex-focus); }
+
+.rr-fierce { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: var(--apex-ink-soft); margin-bottom: 1rem; cursor: pointer; }
+.rr-composer-error { font-size: 0.8rem; color: var(--apex-error); margin-bottom: 0.7rem; }
+.rr-conjure { margin-top: 0.2rem; }
+
+/* ---- Composer overlay ---- */
+.rr-overlay {
+  position: fixed; inset: 0; z-index: 50;
+  display: flex; align-items: center; justify-content: center;
+  padding: 1.2rem;
+  background: rgba(42, 32, 24, 0.34);
+  animation: rrScrimIn 0.2s var(--apex-ease);
+}
+.rr-overlay-card {
+  position: relative;
+  width: 100%; max-width: 380px;
+  border: 1px solid var(--apex-rule);
+  border-radius: var(--apex-radius);
+  box-shadow: 0 22px 60px rgba(40, 25, 10, 0.28);
+}
+.rr-overlay-card::before {
+  content: ''; position: absolute; inset: 6px;
+  border: 1px solid var(--apex-gilt); border-radius: 5px; opacity: 0.5; pointer-events: none;
+}
+.rr-overlay-close {
+  position: absolute; top: 8px; right: 12px; z-index: 2;
+  font-size: 1.3rem; line-height: 1; color: var(--apex-brown-mute);
+  background: none; cursor: pointer;
+}
+.rr-overlay-close:hover { color: var(--apex-ink); }
+.rr-overlay-close:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--apex-focus); border-radius: 4px; }
+
+/* ---- Responsive ---- */
+@media (max-width: 560px) {
+  .rr-kicker { display: none; }
+  .rr-new-matchup span { display: none; }
+  .rr-slots { flex-direction: column; align-items: stretch; }
+  .rr-slot-amp { align-self: center; padding: 0; }
+}
+
+/* ---- Motion ---- */
+@media (prefers-reduced-motion: no-preference) {
+  .rr-gallery .rr-card {
+    opacity: 0;
+    transform: translateY(8px);
+    animation: rrCardRise 0.5s var(--apex-ease) forwards;
+  }
+  .rr-card--ready .rr-cover-img { animation: rrDevelopIn 0.6s var(--apex-ease); }
+  .rr-sweep { animation: rrSweep 1.8s var(--apex-ease) infinite; }
+  .rr-winner { animation: rrPop 0.3s var(--apex-ease); }
+
+  @keyframes rrCardRise { to { opacity: 1; transform: translateY(0); } }
+  @keyframes rrDevelopIn { from { opacity: 0; filter: saturate(0.4) blur(4px); } to { opacity: 1; filter: none; } }
+  @keyframes rrSweep { from { left: -42%; } to { left: 110%; } }
+  @keyframes rrPop { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  @keyframes rrScrimIn { from { opacity: 0; } to { opacity: 1; } }
+}
