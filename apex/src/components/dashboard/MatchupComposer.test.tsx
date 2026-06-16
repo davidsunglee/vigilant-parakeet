@@ -68,4 +68,9 @@ describe('MatchupComposer', () => {
     await user.click(screen.getByTestId('rr-scrim'));
     expect(onClose).toHaveBeenCalledTimes(2);
   });
+
+  it('overlay focuses the first contender on open', () => {
+    render(<MatchupComposer variant="overlay" onCreate={vi.fn()} onClose={vi.fn()} />);
+    expect(screen.getByLabelText(/first contender/i)).toHaveFocus();
+  });
 });

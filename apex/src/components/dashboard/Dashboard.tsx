@@ -61,12 +61,15 @@ export const Dashboard: React.FC<{ onReadStory: (id: string) => void }> = ({ onR
 
   // Initial load + owner-filtered Realtime subscription.
   useEffect(() => {
-    loadStories();
     if (!user) return;
+    loadStories();
     const channel = CatalogService.subscribeToStories(user.id, onChange);
     return () => {
       supabase.removeChannel(channel);
     };
+    // user?.id is the stable identity key for (re)subscribing; the user object
+    // itself is intentionally not a dependency to avoid needless resubscribes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, onChange, loadStories]);
 
   // Batch-resolve signed cover URLs for ready rows with a cover path.
@@ -112,6 +115,12 @@ export const Dashboard: React.FC<{ onReadStory: (id: string) => void }> = ({ onR
     },
     [loadStories],
   );
+
+  // If the library empties (for example a Realtime DELETE of the last story)
+  // while the composer overlay is open, close it so it cannot reopen later.
+  useEffect(() => {
+    if (stories.length === 0) setComposerOpen(false);
+  }, [stories.length]);
 
   const visibleStories = useMemo(() => {
     const q = search.trim().toLowerCase();

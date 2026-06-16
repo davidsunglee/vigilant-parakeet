@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { FormEvent } from 'react';
+import type { FormEvent, KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { ART_STYLE_OPTIONS, ArtStyleId } from '../../types/artStyle';
 import type { CreateStoryInput } from '../../services/CatalogService';
 
@@ -17,10 +17,33 @@ export function MatchupComposer({ variant, onCreate, onClose }: MatchupComposerP
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const firstFieldRef = useRef<HTMLInputElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
 
+  // Focus the first field on mount. For the overlay, remember whatever had
+  // focus (the stamp that opened it) and restore it when the overlay closes.
   useEffect(() => {
+    const opener = variant === 'overlay' ? (document.activeElement as HTMLElement | null) : null;
     firstFieldRef.current?.focus();
-  }, []);
+    return () => opener?.focus?.();
+  }, [variant]);
+
+  // Keep Tab focus inside the overlay dialog (a modal focus trap).
+  function trapFocus(e: ReactKeyboardEvent) {
+    if (e.key !== 'Tab' || !cardRef.current) return;
+    const focusable = cardRef.current.querySelectorAll<HTMLElement>(
+      'button, input, select, textarea, [href], [tabindex]:not([tabindex="-1"])',
+    );
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  }
 
   useEffect(() => {
     if (variant !== 'overlay' || !onClose) return;
@@ -144,11 +167,13 @@ export function MatchupComposer({ variant, onCreate, onClose }: MatchupComposerP
   return (
     <div className="rr-overlay" data-testid="rr-scrim" onClick={onClose}>
       <div
+        ref={cardRef}
         className="rr-overlay-card"
         role="dialog"
         aria-modal="true"
         aria-label="Begin a new matchup"
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={trapFocus}
       >
         <button type="button" className="rr-overlay-close" aria-label="Close" onClick={onClose}>
           &times;
