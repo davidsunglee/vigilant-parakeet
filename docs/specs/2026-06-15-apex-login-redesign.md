@@ -66,35 +66,39 @@ never render at the same time, so there is no visual clash during migration.
 
 ### Palette (CSS variables)
 
+Every token is prefixed `--apex-` so the new system can be added next to the
+legacy tokens without collision (notably the legacy `--radius: 12px` the
+dashboard depends on) and so the new system reads as one named layer.
+
 ```
---paper-hi:      #FBF5E6   /* lightest ivory, top of page gradient   */
---paper:         #F2E7CE   /* mid ivory                               */
---paper-lo:      #ECDFC0   /* deepest ivory, bottom of gradient       */
---surface:       #FDFAF1   /* inputs and ghost-button fill            */
---ink:           #2A2018   /* primary text                            */
---ink-soft:      #4A3D29   /* ghost-button label                      */
---brown:         #6E5E44   /* subtitle / secondary text               */
---brown-mute:    #9A8462   /* footer / tertiary text                  */
---forest:        #3E6B4A   /* primary accent (buttons, links, mark)   */
---forest-deep:   #335A3E   /* primary hover / active                  */
---on-forest:     #FBF5E6   /* text on forest fills                    */
---gilt:          #C7A23E   /* emblem ring, hairline flourishes        */
---rule:          #D8C49A   /* dividers, frame inner line              */
---field-border:  #DCC99E   /* input and ghost-button border           */
---error:         #A23B2A   /* inline error text (a clay brick red)    */
---focus:         rgba(62, 107, 74, 0.35)  /* forest focus ring        */
+--apex-paper-hi:     #FBF5E6   /* lightest ivory, top of page gradient   */
+--apex-paper:        #F2E7CE   /* mid ivory                               */
+--apex-paper-lo:     #ECDFC0   /* deepest ivory, bottom of gradient       */
+--apex-surface:      #FDFAF1   /* inputs and ghost-button fill            */
+--apex-ink:          #2A2018   /* primary text                            */
+--apex-ink-soft:     #4A3D29   /* ghost-button label                      */
+--apex-brown:        #6E5E44   /* subtitle / secondary text               */
+--apex-brown-mute:   #9A8462   /* footer / tertiary text                  */
+--apex-forest:       #3E6B4A   /* primary accent (buttons, links, mark)   */
+--apex-forest-deep:  #335A3E   /* primary hover / active                  */
+--apex-on-forest:    #FBF5E6   /* text on forest fills                    */
+--apex-gilt:         #C7A23E   /* emblem ring, hairline flourishes        */
+--apex-rule:         #D8C49A   /* dividers, frame inner line              */
+--apex-field-border: #DCC99E   /* input and ghost-button border           */
+--apex-error:        #A23B2A   /* inline error text (a clay brick red)    */
+--apex-focus:        rgba(62, 107, 74, 0.35)  /* forest focus ring        */
 ```
 
 The page background is a radial gradient:
-`radial-gradient(120% 90% at 50% -20%, var(--paper-hi), var(--paper) 70%, var(--paper-lo))`,
+`radial-gradient(120% 90% at 50% -20%, var(--apex-paper-hi), var(--apex-paper) 70%, var(--apex-paper-lo))`,
 overlaid with a faint two-layer dotted "paper grain" at low opacity.
 
 ### Type
 
 ```
---font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
---font-serif:   'Newsreader', Georgia, serif;      /* used italic   */
---font-ui:      'Hanken Grotesk', system-ui, -apple-system, sans-serif;
+--apex-font-display: 'Fraunces', Georgia, 'Times New Roman', serif;
+--apex-font-serif:   'Newsreader', Georgia, serif;      /* used italic   */
+--apex-font-ui:      'Hanken Grotesk', system-ui, -apple-system, sans-serif;
 ```
 
 - **Fraunces** (weights 400/600/900, optical sizing on): display only. The title
@@ -107,25 +111,25 @@ overlaid with a faint two-layer dotted "paper grain" at low opacity.
 ### Spacing, radius, motion
 
 ```
---radius:      10px;   /* inputs and buttons          */
---radius-frame: 6px;   /* the title-page double rule  */
---ease:        cubic-bezier(0.22, 1, 0.36, 1);
+--apex-radius:       10px;   /* inputs and buttons          */
+--apex-radius-frame: 6px;    /* the title-page double rule  */
+--apex-ease:         cubic-bezier(0.22, 1, 0.36, 1);
 ```
 
 On first paint the column reveals with a gentle staggered fade-and-rise
 (emblem, kicker, title, subtitle, form, footer, roughly 60ms apart). The forest
-primary button darkens to `--forest-deep` and lifts 1px on hover. All motion is
+primary button darkens to `--apex-forest-deep` and lifts 1px on hover. All motion is
 wrapped in `@media (prefers-reduced-motion: no-preference)`; with reduced motion
 requested, everything renders in final position with no transition.
 
 ### Reusable primitives (named for reuse across the app)
 
-- **Paper field** (`.apex-field`): `--surface` fill, `--field-border` border,
-  `--radius`, forest focus ring via `--focus`.
-- **Primary stamp button** (`.apex-btn`): `--forest` fill, `--on-forest` text,
-  bold Hanken Grotesk.
-- **Ghost button** (`.apex-btn--ghost`): `--surface` fill, `--field-border`
-  border, `--ink-soft` text.
+- **Paper field** (`.apex-field`): `--apex-surface` fill, `--apex-field-border`
+  border, `--apex-radius`, forest focus ring via `--apex-focus`.
+- **Primary stamp button** (`.apex-btn`): `--apex-forest` fill, `--apex-on-forest`
+  text, bold Hanken Grotesk.
+- **Ghost button** (`.apex-btn--ghost`): `--apex-surface` fill,
+  `--apex-field-border` border, `--apex-ink-soft` text.
 - **Emblem** (`.apex-emblem`): a circle with a gilt ring and an inset paper
   halo, holding the Fraunces "&".
 - **Italic divider** (`.apex-divider`): a hairline rule each side of a Newsreader
@@ -136,7 +140,7 @@ requested, everything renders in final position with no transition.
 ### Layout
 
 Centered single column, vertically and horizontally centered in the viewport,
-inside a **gilt double-rule frame** (an outer `--rule` border inset from the
+inside a **gilt double-rule frame** (an outer `--apex-rule` border inset from the
 edges, with a second finer line just inside it) that evokes a book's title page.
 Max content width about 340px. The frame insets and the title size both reduce
 on small screens.
@@ -146,15 +150,15 @@ on small screens.
 1. Emblem: the Fraunces "&".
 2. Kicker (Hanken Grotesk, uppercase, letter-spaced): `An Apex Publication`
 3. Title (Fraunces 900): `Who Would` then `Win?` where "Win?" is italic weight
-   500 in `--forest`.
-4. Subtitle (Newsreader italic, `--brown`): `Conjure an illustrated showdown
+   500 in `--apex-forest`.
+4. Subtitle (Newsreader italic, `--apex-brown`): `Conjure an illustrated showdown
    between any two things, then find out who would win.`
 5. Email field (paper field), placeholder `you@example.com`, with a
    visually-hidden `<label>` reading "Email address".
 6. Primary button: `Send me a magic link`
 7. Italic divider: `or`
 8. Ghost button with an inline multicolor Google "G": `Continue with Google`
-9. Footer (Hanken Grotesk, `--brown-mute`): `No password. The same link signs
+9. Footer (Hanken Grotesk, `--apex-brown-mute`): `No password. The same link signs
    you in or signs you up.`
 
 All copy avoids em dashes.
@@ -171,7 +175,7 @@ and an `errorMessage`.
   mark, a Newsreader italic heading `Check your inbox`, body text `We sent a
   magic link to {email}. Open it on this device to step inside.`, and a quiet
   ghost link `Use a different email` that returns to `idle`.
-- **error**: an inline message in `--error` below the field. Invalid address:
+- **error**: an inline message in `--apex-error` below the field. Invalid address:
   `That address does not look right.` Send failure (the awaited auth call
   throws): `Something went wrong sending your link. Please try again.` The form
   returns to `idle` inputs so the user can retry.
@@ -187,9 +191,9 @@ the email is validated before calling the API.
 - Both buttons have clear accessible names; the Google glyph is decorative
   (`aria-hidden`).
 - Visible `:focus-visible` ring in forest on all interactive elements.
-- Confirm computed contrast of `--on-forest` on `--forest` meets WCAG AA (>=
-  4.5:1) for the button label; darken `--forest` if it falls short. Ink on paper
-  is comfortably above AA.
+- Confirm computed contrast of `--apex-on-forest` on `--apex-forest` meets WCAG
+  AA (>= 4.5:1) for the button label; darken `--apex-forest` if it falls short.
+  Ink on paper is comfortably above AA.
 - Honors `prefers-reduced-motion`.
 
 ## Implementation
