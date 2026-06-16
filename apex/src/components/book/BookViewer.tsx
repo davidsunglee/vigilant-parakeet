@@ -93,6 +93,8 @@ export const BookViewer: React.FC<{ storyId: string; onClose: () => void }> = ({
     () => typeof window !== 'undefined' && window.matchMedia(NARROW_QUERY).matches,
   );
   const touchX = useRef<number | null>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const restoreFocusRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -147,6 +149,19 @@ export const BookViewer: React.FC<{ storyId: string; onClose: () => void }> = ({
     return () => window.removeEventListener('keydown', onKey);
   }, [goPrev, goNext, onClose]);
 
+  // Capture the element that opened the reader; restore focus to it on close.
+  useEffect(() => {
+    restoreFocusRef.current = (document.activeElement as HTMLElement) ?? null;
+    return () => {
+      restoreFocusRef.current?.focus?.();
+    };
+  }, []);
+
+  // Move focus into the reader once its content has loaded.
+  useEffect(() => {
+    if (story) rootRef.current?.focus();
+  }, [story]);
+
   if (!story) {
     return (
       <div className="rd reader--journal rd-loading" role="status">
@@ -174,7 +189,13 @@ export const BookViewer: React.FC<{ storyId: string; onClose: () => void }> = ({
   };
 
   return (
-    <div className="rd reader--journal">
+    <div
+      className="rd reader--journal"
+      role="region"
+      aria-label={`Reading: ${matchup}`}
+      tabIndex={-1}
+      ref={rootRef}
+    >
       <div className="rd-stage" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
         <div className="rd-view" key={index}>
           {renderView(view, story, signed, () => setIndex(0), onClose)}

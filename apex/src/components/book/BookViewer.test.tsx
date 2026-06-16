@@ -112,4 +112,13 @@ describe('BookViewer', () => {
     unmount();
     expect(removeSpy).toHaveBeenCalledWith('keydown', expect.any(Function));
   });
+
+  it('is a labeled region and moves focus into the reader on open', async () => {
+    renderViewer();
+    await waitFor(() => expect(screen.getByText('Who Would Win?')).toBeInTheDocument());
+
+    const region = screen.getByRole('region', { name: /reading: lion & tiger/i });
+    expect(region).toBeInTheDocument();
+    await waitFor(() => expect(region).toHaveFocus());
+  });
 });

@@ -12,6 +12,8 @@
   overflow: hidden;
 }
 
+.rd.reader--journal:focus { outline: none; }
+
 .rd.reader--journal::before {
   content: '';
   position: absolute;
