@@ -148,7 +148,7 @@ export async function runGenerationPipeline(
   const fierceClause = fierceMode ? ` ${FIERCE_MODE_DESCRIPTOR}` : '';
   const artStyleAnchor = `Generate an illustration in the following style: ${visualAnchor.animalA.artStyle}.${fierceClause} This is a children's educational book illustration.`;
 
-  const coverPrompt = `A dramatic, dynamic children's book cover illustration showing a ${animalAQuery} and a ${animalBQuery} facing each other in an epic standoff. Both animals must be fully visible from head to tail. The scene should be intense and exciting, with both animals looking powerful and ready for battle. Bold, vibrant colors with an action-packed composition. No text in the image.
+  const coverPrompt = `A dramatic, dynamic children's book cover illustration showing a ${animalAQuery} and a ${animalBQuery} facing each other in an epic standoff. Both animals must be fully visible from head to tail. The scene should be intense and exciting, with both animals looking powerful and ready for battle. Bold, vibrant colors with an action-packed composition. No text in the image. Keep both animals centred with generous margin around them and nothing important at the very edges, so the image can be cropped to different shapes without cutting off either animal.
 
 Animal A: ${visualAnchor.animalA.fullDescription}
 Animal B: ${visualAnchor.animalB.fullDescription}`;
@@ -273,7 +273,7 @@ Animal B: ${visualAnchor.animalB.fullDescription}`;
             await timers.sleep(INTER_REQUEST_DELAY_MS);
           }
           const base64 = await deps.image.generateImage(page.visualPrompt, {
-            aspectRatio: '4:3',
+            aspectRatio: '3:4',
             styleAnchor: artStyleAnchor,
           });
           await deps.storage.uploadImage(pagePath, base64);

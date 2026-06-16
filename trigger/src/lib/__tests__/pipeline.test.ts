@@ -209,6 +209,15 @@ describe('runGenerationPipeline', () => {
     expect(db.setCoverPath).toHaveBeenCalledWith('story-1', 'stories/story-1/cover.png');
   });
 
+  it('generates page images at the crop-safe 3:4 portrait aspect', async () => {
+    const { deps, image } = makeDeps();
+    await runGenerationPipeline(deps, PAYLOAD);
+    const pageCalls = (image.generateImage.mock.calls as any[][]).filter(
+      (call) => call[1]?.aspectRatio === '3:4',
+    );
+    expect(pageCalls).toHaveLength(14);
+  });
+
   it('skips all image generation when every object already exists (cached resume → 0 generations)', async () => {
     const { deps, image, storage } = makeDeps({ imageExists: async () => true });
     const manifest = await runGenerationPipeline(deps, PAYLOAD);

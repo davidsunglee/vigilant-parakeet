@@ -86,6 +86,7 @@ Scene variety — vary these across pages so the book does not feel like a serie
 - Framing and placement in the composition (left, right, off-center; full body, mid-body crop is OK occasionally as long as identity-defining features remain visible).
 - Environment cues that match the page's aspect (habitat, terrain, lighting, time of day) — but never contradict species, colors, markings, or the established art style.
 
+Crop safety: keep the animal centred with comfortable margin and nothing critical (faces, horns, tails) touching the edges, so the same image can be cropped to a vignette, a framed plate, or a full bleed without losing the subject.
 Do not lock the animal to the same pose, camera angle, or centered static portrait across all pages. Do not contradict or alter the animal's species, colors, markings, or art style.`;
     }
 
@@ -144,6 +145,7 @@ Include both descriptions in every visualPrompt regardless of whether the scene 
 Identity invariants — keep IDENTICAL between the showdown and outcome pages and consistent with the rest of the book: species/subspecies, face shape, body colors, markings, horns/antlers/tusks, mane, tail, and distinctive proportions.
 Scene variety — vary pose, action, camera angle, framing, and placement between the showdown page and the outcome page so the two scenes feel distinct rather than near-duplicates.
 
+Crop safety: keep both animals centred with comfortable margin and nothing critical touching the edges, so the image can be cropped to different shapes without losing either animal.
 Do not contradict or alter the animals' species, colors, markings, or art style described above.`;
     }
 
