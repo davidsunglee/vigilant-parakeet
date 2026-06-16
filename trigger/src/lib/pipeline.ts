@@ -27,19 +27,31 @@ export const timers = {
 
 const DEFAULT_OPTIONS: StoryGeneratorOptions = { artStyle: 'surprise', fierceMode: false };
 
-const ASPECTS = [
-  'Scientific Classification',
-  'Natural Habitat',
-  'Size & Weight',
-  'Hunting & Diet',
-  'Social Behavior',
-  'Senses: Sight, Hearing & Smell',
-  'Weapons & Offense',
-  'Defenses & Armor',
-  'Speed & Agility',
-  'Intelligence & Anatomy',
-  'Secret Weapons',
-  'Overall Threat Level',
+const CHAPTERS: { name: string; brief: string }[] = [
+  {
+    name: 'Meet the Animal',
+    brief: 'what kind of animal it is (its scientific classification and the family it belongs to) and its size and weight, described in terms a child can picture',
+  },
+  {
+    name: 'Where It Lives',
+    brief: 'its natural habitat and where in the world it is found',
+  },
+  {
+    name: 'Hunting & Diet',
+    brief: 'what it eats and how it finds or catches its food, including the senses (sight, smell, hearing) it relies on to do so',
+  },
+  {
+    name: 'Family & Smarts',
+    brief: 'how it lives alongside others (its social behavior and family life) and how intelligent it is',
+  },
+  {
+    name: 'Attack & Defense',
+    brief: "its natural weapons and its defenses or armor. If the animal's speed or agility is exceptional and central to how it attacks or escapes (a cheetah's sprint, a peregrine's dive, a gazelle's evasion), feature that prominently here; otherwise keep the focus on its weapons and armor",
+  },
+  {
+    name: 'Secret Weapons',
+    brief: 'one surprising special ability or hidden adaptation that could give it an unexpected advantage',
+  },
 ];
 
 export interface PipelineDeps {
@@ -83,7 +95,7 @@ function determineEndingType(isSurprise: boolean): IBattleOutcome['endingType'] 
 
 /**
  * Pure generation orchestration with injected I/O. Ported from the client-side
- * StoryGeneratorService: same 12 aspects, surprise-ending roll, cover prompt,
+ * StoryGeneratorService: six chapters, surprise-ending roll, cover prompt,
  * parallel narrative+cover batch, page index scheme, and manifest assembly.
  *
  * Cost-resumption (Trigger.dev has no step.run memoization): narrative phases
@@ -188,8 +200,8 @@ Animal B: ${visualAnchor.animalB.fullDescription}`;
         visualAnchor,
         fierceMode,
       ),
-      deps.llm.getAspectsForAnimal(animalA, ASPECTS, visualAnchor.animalA, fierceMode),
-      deps.llm.getAspectsForAnimal(animalB, ASPECTS, visualAnchor.animalB, fierceMode),
+      deps.llm.getAspectsForAnimal(animalA, CHAPTERS, visualAnchor.animalA, fierceMode),
+      deps.llm.getAspectsForAnimal(animalB, CHAPTERS, visualAnchor.animalB, fierceMode),
       resolveCover(),
     ]);
 
@@ -203,14 +215,14 @@ Animal B: ${visualAnchor.animalB.fullDescription}`;
     coverPath = generatedCover;
 
     rawPages = [];
-    // Combine aspects into page pairs (indices 1–24).
-    for (let i = 0; i < 12; i++) {
+    // Combine chapters into page pairs (indices 1 .. 2 * CHAPTERS.length).
+    for (let i = 0; i < CHAPTERS.length; i++) {
       const aspectA = aspectsA[i];
       const aspectB = aspectsB[i];
 
       rawPages.push({
         index: i * 2 + 1,
-        title: aspectA.aspectName,
+        title: CHAPTERS[i].name,
         bodyText: aspectA.bodyText,
         visualPrompt: aspectA.visualPrompt,
         funFact: aspectA.funFact,

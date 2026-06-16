@@ -62,17 +62,16 @@ export class LlmClient {
 
   async getAspectsForAnimal(
     animal: IAnimalEntity,
-    aspects: string[],
+    chapters: { name: string; brief: string }[],
     visualDescription?: IAnimalVisualDescription,
     fierceMode = false,
   ) {
-    let prompt = `Write an engaging, educational children's book page (about 2-3 sentences max) for each of the provided aspects for the animal: ${animal.commonName}. Provide a highly descriptive visual prompt for an image for the page.
+    let prompt = `Write an engaging, educational children's book page (about 2-3 sentences max) for each of the chapters listed below, for the animal: ${animal.commonName}. Each chapter has a title and a focus describing what its page should cover. Provide a highly descriptive visual prompt for an image for each page.
 
 Fun fact rules:
-- Include a fun fact on AT MOST 3 out of the ${aspects.length} pages — pick only the most genuinely surprising and fascinating facts.
-- Each fun fact must be a single sentence, different from the main body text, and relevant to that page's specific aspect.
-- Spread the fun facts out: place them across early, middle, and late aspects (not clustered together).
-- If fewer than 3 facts are truly interesting, include fewer. Do not force any.`;
+- Include a fun fact on AT MOST 2 of the ${chapters.length} pages, picking only the most genuinely surprising and fascinating facts.
+- Each fun fact must be a single sentence, different from the main body text, and relevant to that page's chapter.
+- If fewer than 2 facts are truly interesting, include fewer. Do not force any.`;
 
     if (visualDescription) {
       prompt += `\n\nIMPORTANT — Visual consistency instructions for the visualPrompt fields:
@@ -94,7 +93,9 @@ Do not lock the animal to the same pose, camera angle, or centered static portra
       prompt += `\n\nFierce Mode is ON for this book. Each visualPrompt should describe powerful posture, alert focused expression, and dynamic energy appropriate for a children's educational book. Do not include gore, injury, blood, horror, or realistic violence.`;
     }
 
-    prompt += `\n\nGenerate exactly one array item for each aspect provided, strictly in the same order. Aspects: \n\n${aspects.join('\n')}`;
+    prompt += `\n\nGenerate exactly one array item for each chapter, strictly in the same order, using the chapter title as aspectName. Chapters:\n\n${chapters
+      .map((c, i) => `${i + 1}. ${c.name}: ${c.brief}`)
+      .join('\n')}`;
 
     const data = await this.callLlm(prompt, {
       type: 'array',

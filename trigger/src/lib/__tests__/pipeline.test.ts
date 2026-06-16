@@ -17,13 +17,11 @@ const mockProfileB = {
 };
 
 function makeMockAspects(animalPrefix: string) {
-  const aspects = [
-    'Scientific Classification', 'Natural Habitat', 'Size & Weight',
-    'Hunting & Diet', 'Social Behavior', 'Senses: Sight, Hearing & Smell',
-    'Weapons & Offense', 'Defenses & Armor', 'Speed & Agility',
-    'Intelligence & Anatomy', 'Secret Weapons', 'Overall Threat Level',
+  const chapters = [
+    'Meet the Animal', 'Where It Lives', 'Hunting & Diet',
+    'Family & Smarts', 'Attack & Defense', 'Secret Weapons',
   ];
-  return aspects.map((name) => ({
+  return chapters.map((name) => ({
     aspectName: name,
     bodyText: `${animalPrefix} ${name} text.`,
     visualPrompt: `${animalPrefix} ${name} visual`,
@@ -121,39 +119,56 @@ describe('runGenerationPipeline', () => {
     spyOn(timers, 'sleep').mockResolvedValue(undefined);
   });
 
-  it('produces 26 pages (12 aspect pairs + showdown + outcome)', async () => {
+  it('produces 14 pages (6 chapter pairs + showdown + outcome)', async () => {
     const { deps } = makeDeps();
     const manifest = await runGenerationPipeline(deps, PAYLOAD);
-    expect(manifest.pages).toHaveLength(26);
+    expect(manifest.pages).toHaveLength(14);
   });
 
-  it('assigns page indices 1/2 … 23/24, then 31 and 32', async () => {
+  it('assigns page indices 1/2 … 11/12, then 31 and 32', async () => {
     const { deps } = makeDeps();
     const manifest = await runGenerationPipeline(deps, PAYLOAD);
 
     expect(manifest.pages[0].index).toBe(1);
     expect(manifest.pages[1].index).toBe(2);
-    expect(manifest.pages[22].index).toBe(23);
-    expect(manifest.pages[23].index).toBe(24);
-    expect(manifest.pages[24].index).toBe(31);
-    expect(manifest.pages[25].index).toBe(32);
+    expect(manifest.pages[10].index).toBe(11);
+    expect(manifest.pages[11].index).toBe(12);
+    expect(manifest.pages[12].index).toBe(31);
+    expect(manifest.pages[13].index).toBe(32);
   });
 
   it('alternates left/right pages: odd positions left, even positions right', async () => {
     const { deps } = makeDeps();
     const manifest = await runGenerationPipeline(deps, PAYLOAD);
 
-    for (let i = 0; i < 24; i++) {
+    for (let i = 0; i < 12; i++) {
       expect(manifest.pages[i].isLeftPage).toBe(i % 2 === 0);
     }
-    expect(manifest.pages[24].isLeftPage).toBe(true); // showdown
-    expect(manifest.pages[25].isLeftPage).toBe(false); // outcome
+    expect(manifest.pages[12].isLeftPage).toBe(true); // showdown
+    expect(manifest.pages[13].isLeftPage).toBe(false); // outcome
   });
 
-  it('generates exactly 27 images on a clean run (cover + 26 pages)', async () => {
+  it('titles each left page from its chapter name', async () => {
+    const { deps } = makeDeps();
+    const manifest = await runGenerationPipeline(deps, PAYLOAD);
+    // Position 8 is chapter index 4 (Attack & Defense), a left page (index 9).
+    expect(manifest.pages[8].title).toBe('Attack & Defense');
+    expect(manifest.pages[8].index).toBe(9);
+  });
+
+  it('passes the six chapters (with the Attack & Defense speed clause) to the LLM', async () => {
+    const { deps, llm } = makeDeps();
+    await runGenerationPipeline(deps, PAYLOAD);
+    const chapters = (llm.getAspectsForAnimal.mock.calls[0] as any[])[1];
+    expect(chapters).toHaveLength(6);
+    const attack = chapters.find((c: { name: string }) => c.name === 'Attack & Defense');
+    expect(attack.brief.toLowerCase()).toContain('speed');
+  });
+
+  it('generates exactly 15 images on a clean run (cover + 14 pages)', async () => {
     const { deps, image } = makeDeps();
     await runGenerationPipeline(deps, PAYLOAD);
-    expect(image.generateImage).toHaveBeenCalledTimes(27);
+    expect(image.generateImage).toHaveBeenCalledTimes(15);
   });
 
   it('stores Storage paths (not base64) in image fields', async () => {
@@ -166,8 +181,8 @@ describe('runGenerationPipeline', () => {
     }
     // Spot-check specific indices.
     expect(manifest.pages[0].imageUrl).toBe('stories/story-1/1.png');
-    expect(manifest.pages[24].imageUrl).toBe('stories/story-1/31.png');
-    expect(manifest.pages[25].imageUrl).toBe('stories/story-1/32.png');
+    expect(manifest.pages[12].imageUrl).toBe('stories/story-1/31.png');
+    expect(manifest.pages[13].imageUrl).toBe('stories/story-1/32.png');
   });
 
   it('calls updateProgress at the milestone steps with integer percentages', async () => {
@@ -181,8 +196,8 @@ describe('runGenerationPipeline', () => {
     expect(steps).toContain('Illustrating pages...');
     expect(steps).toContain('Saving your story...');
 
-    const perPage = progressCalls.filter(([step]) => /^Illustrating page \d+ of 26\.\.\.$/.test(step));
-    expect(perPage).toHaveLength(26);
+    const perPage = progressCalls.filter(([step]) => /^Illustrating page \d+ of 14\.\.\.$/.test(step));
+    expect(perPage).toHaveLength(14);
     expect(progressCalls.every(([, pct]) => Number.isInteger(pct))).toBe(true);
     expect(progressCalls[progressCalls.length - 1]).toEqual(['Saving your story...', 98]);
   });
@@ -203,7 +218,7 @@ describe('runGenerationPipeline', () => {
 
     // The manifest still carries every Storage path.
     expect(manifest.coverImageUrl).toBe('stories/story-1/cover.png');
-    expect(manifest.pages).toHaveLength(26);
+    expect(manifest.pages).toHaveLength(14);
     for (const page of manifest.pages) {
       expect(page.imageUrl).toMatch(/^stories\/story-1\/\d+\.png$/);
     }
