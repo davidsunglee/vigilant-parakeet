@@ -109,6 +109,16 @@ export type StoryProgress =
 export type StoryStatus = 'generating' | 'ready' | 'failed';
 
 /**
+ * A `generating` story whose `updated_at` has not advanced within this window is
+ * treated as stalled: its Trigger.dev run expired before a worker picked it up,
+ * was canceled, or the worker died mid-run, so no progress will ever arrive. The
+ * `stories_set_updated_at` trigger bumps `updated_at` on every progress write, so
+ * a healthy run refreshes it constantly while a stalled one never does.
+ * Keep in sync with the same constant in supabase/functions/retry-story.
+ */
+export const STALLED_AFTER_MS = 5 * 60 * 1000;
+
+/**
  * Shape of a row in the Supabase `stories` table. Image fields hold Supabase
  * Storage paths (e.g. `stories/{id}/cover.png`), not base64 data URIs; the full
  * page/manifest content lives in the `manifest` JSONB column once generation

@@ -42,6 +42,8 @@ export interface StoryCardProps {
   story: StoryRecord;
   coverUrl?: string;
   isWinnerRevealed: boolean;
+  /** True when a generating story has gone cold and should offer a retry. */
+  isStalled?: boolean;
   onToggleWinner: (id: string) => void;
   onReadStory: (id: string) => void;
   onDelete: (id: string) => void;
@@ -53,6 +55,7 @@ export const StoryCard = React.memo<StoryCardProps>(function StoryCard({
   story,
   coverUrl,
   isWinnerRevealed,
+  isStalled = false,
   onToggleWinner,
   onReadStory,
   onDelete,
@@ -61,11 +64,14 @@ export const StoryCard = React.memo<StoryCardProps>(function StoryCard({
 }) {
   const { a: nameA, b: nameB } = matchupNames(story);
   const titleText = `${nameA} & ${nameB}`;
+  // A stalled generating run is presented like a failed one (jammed cover plus a
+  // retry), since no further progress will arrive.
+  const view = isStalled ? 'failed' : story.status;
 
   return (
-    <article className={`rr-card rr-card--${story.status}`}>
+    <article className={`rr-card rr-card--${view}`}>
       <div className="rr-cover">
-        {story.status === 'ready' && (
+        {view === 'ready' && (
           <>
             {coverUrl && (
               <img
@@ -92,7 +98,7 @@ export const StoryCard = React.memo<StoryCardProps>(function StoryCard({
           </>
         )}
 
-        {story.status === 'generating' && (() => {
+        {view === 'generating' && (() => {
           const view = describeProgress(story.status, story.progress);
           const press = (
             <div className="rr-press">
@@ -133,9 +139,9 @@ export const StoryCard = React.memo<StoryCardProps>(function StoryCard({
           );
         })()}
 
-        {story.status === 'failed' && (
+        {view === 'failed' && (
           <div className="rr-failed" aria-hidden="true">
-            <span className="rr-fail-cap">The press jammed</span>
+            <span className="rr-fail-cap">{isStalled ? 'The press stalled' : 'The press jammed'}</span>
             <span className="rr-fail-mark">!</span>
           </div>
         )}
@@ -148,12 +154,12 @@ export const StoryCard = React.memo<StoryCardProps>(function StoryCard({
           <span className="rr-title-name" title={nameB}>{nameB}</span>
         </h3>
         <p className="rr-date">
-          {story.status === 'generating'
+          {view === 'generating'
             ? 'Just now'
             : new Date(story.created_at).toLocaleDateString()}
         </p>
 
-        {story.status === 'ready' &&
+        {view === 'ready' &&
           (isWinnerRevealed ? (
             <button type="button" className="rr-winner" onClick={() => onToggleWinner(story.id)}>
               <Trophy size={13} /> Winner: {winnerLabel(story)}
@@ -164,11 +170,13 @@ export const StoryCard = React.memo<StoryCardProps>(function StoryCard({
             </button>
           ))}
 
-        {story.status === 'failed' && (
+        {view === 'failed' && (
           <>
             <p className="rr-error" role="alert">
-              <AlertTriangle size={13} /> This matchup did not come together.{' '}
-              {story.error ?? 'Unknown error'}
+              <AlertTriangle size={13} />{' '}
+              {isStalled
+                ? 'This matchup stalled before it could start.'
+                : `This matchup did not come together. ${story.error ?? 'Unknown error'}`}
             </p>
             <div className="rr-fail-actions">
               {onRetry && (

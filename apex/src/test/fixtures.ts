@@ -79,7 +79,9 @@ export function createMockStoryRecord(overrides: Partial<StoryRecord> = {}): Sto
     progress: null,
     error: null,
     created_at: '2026-06-14T00:00:00.000Z',
-    updated_at: '2026-06-14T00:00:00.000Z',
+    // Default to a just-now timestamp so a `generating` mock is not treated as
+    // stalled; the stalled-card test overrides this with an old value.
+    updated_at: new Date().toISOString(),
     ...overrides,
   };
 }

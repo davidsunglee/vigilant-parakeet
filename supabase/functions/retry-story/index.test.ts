@@ -72,13 +72,26 @@ Deno.test("missing JWT returns 401", async () => {
   assertEquals(res.status, 401);
 });
 
-Deno.test("retrying a non-failed story returns 409 and does not reset", async () => {
+Deno.test("retrying a freshly generating story returns 409 and does not reset", async () => {
   const { client, updates } = makeFakeSupabase({
-    story: { id: "story-1", owner_id: "user-123", status: "generating", animal_a: "cat", animal_b: "dog", art_style: "surprise", fierce_mode: false },
+    story: { id: "story-1", owner_id: "user-123", status: "generating", animal_a: "cat", animal_b: "dog", art_style: "watercolor", fierce_mode: false, updated_at: new Date().toISOString() },
   });
   const res = await handleRequest(makeRequest(), makeDeps(client));
   assertEquals(res.status, 409);
   assertEquals(updates.length, 0);
+});
+
+Deno.test("retrying a stalled generating story resets the row and re-triggers", async () => {
+  const stale = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+  const { client, updates } = makeFakeSupabase({
+    story: { id: "story-1", owner_id: "user-123", status: "generating", animal_a: "cat", animal_b: "dog", art_style: "watercolor", fierce_mode: false, updated_at: stale },
+  });
+  const res = await handleRequest(makeRequest(), makeDeps(client));
+  assertEquals(res.status, 200);
+  assertEquals(updates[0].status, "generating");
+  assertEquals(updates[0].error, null);
+  assertEquals(updates[0].progress, { phase: "queued" });
+  assertEquals(updates.length, 1);
 });
 
 Deno.test("retrying another owner's story returns 403", async () => {

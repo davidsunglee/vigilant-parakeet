@@ -20,6 +20,12 @@ const defaultDeps: Deps = {
   env: (key) => Deno.env.get(key),
 };
 
+// A `generating` story whose `updated_at` is older than this is treated as
+// stalled (its run expired/never started or the worker died mid-run) and is
+// eligible for retry, since no progress will ever arrive. Keep in sync with
+// STALLED_AFTER_MS in apex/src/types/story.types.ts.
+const STALLED_AFTER_MS = 5 * 60 * 1000;
+
 function json(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -61,10 +67,10 @@ export async function handleRequest(req: Request, deps: Deps = defaultDeps): Pro
     return json({ error: "storyId is required and must be a string" }, 400);
   }
 
-  // Service role bypasses RLS, so verify ownership and the failed status here.
+  // Service role bypasses RLS, so verify ownership and retry-eligibility here.
   const { data: story, error: loadError } = await supabase
     .from("stories")
-    .select("id, owner_id, status, animal_a, animal_b, art_style, fierce_mode")
+    .select("id, owner_id, status, animal_a, animal_b, art_style, fierce_mode, updated_at")
     .eq("id", storyId)
     .single();
 
@@ -74,8 +80,15 @@ export async function handleRequest(req: Request, deps: Deps = defaultDeps): Pro
   if (story.owner_id !== user.id) {
     return json({ error: "Not your story" }, 403);
   }
-  if (story.status !== "failed") {
-    return json({ error: "Only a failed story can be retried" }, 409);
+  // Retryable if it failed, or if it is a stalled generating run (expired/never
+  // started or worker died) whose updated_at has gone cold. A freshly generating
+  // story is still in flight and cannot be retried.
+  const updatedAtMs = story.updated_at ? new Date(story.updated_at as string).getTime() : NaN;
+  const isStalled = story.status === "generating" &&
+    Number.isFinite(updatedAtMs) &&
+    Date.now() - updatedAtMs > STALLED_AFTER_MS;
+  if (story.status !== "failed" && !isStalled) {
+    return json({ error: "Only a failed or stalled story can be retried" }, 409);
   }
 
   // Reset so the shelf shows it generating again; the pipeline resumes from the

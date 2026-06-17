@@ -125,4 +125,36 @@ describe('StoryCard', () => {
     await user.click(screen.getByRole('button', { name: /try again/i }));
     expect(onRetry).toHaveBeenCalledWith('fail-1');
   });
+
+  it('renders a stalled generating card as failed-like with Try again', async () => {
+    const onRetry = vi.fn();
+    const stalled = createMockStoryRecord({
+      id: 'stall-1',
+      status: 'generating',
+      title: null,
+      manifest: null,
+      cover_image_path: null,
+      progress: { phase: 'queued' },
+    });
+    render(
+      <StoryCard
+        story={stalled}
+        isWinnerRevealed={false}
+        isStalled
+        onToggleWinner={noop}
+        onReadStory={noop}
+        onDelete={noop}
+        onRetry={onRetry}
+      />,
+    );
+
+    expect(screen.getByText(/stalled before it could start/i)).toBeInTheDocument();
+    // No live-progress affordances for a cold run.
+    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
+    expect(screen.queryByText('Just now')).not.toBeInTheDocument();
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /try again/i }));
+    expect(onRetry).toHaveBeenCalledWith('stall-1');
+  });
 });

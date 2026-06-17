@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Search } from 'lucide-react';
-import { StoryRecord } from '../../types/story.types';
+import { StoryRecord, STALLED_AFTER_MS } from '../../types/story.types';
 import { CatalogService, CreateStoryInput } from '../../services/CatalogService';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
@@ -22,6 +22,10 @@ export const Dashboard: React.FC<{ onReadStory: (id: string) => void }> = ({ onR
   const [sort, setSort] = useState<SortOrder>('newest');
   const [composerOpen, setComposerOpen] = useState(false);
   const [watchingId, setWatchingId] = useState<string | null>(null);
+  // Wall-clock tick that lets a generating card cross the stalled threshold
+  // while the page stays open. A stalled run emits no Realtime events, so
+  // without this nudge the card would sit on "Queued" until the next reload.
+  const [now, setNow] = useState(() => Date.now());
 
   const toggleWinnerReveal = useCallback((id: string) => {
     setRevealedWinners((prev) => {
@@ -70,6 +74,16 @@ export const Dashboard: React.FC<{ onReadStory: (id: string) => void }> = ({ onR
     // itself is intentionally not a dependency to avoid needless resubscribes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, onChange, loadStories]);
+
+  // While any story is generating, re-render on an interval so a run that goes
+  // cold flips to the stalled/retry state without waiting for a (never-coming)
+  // Realtime update. The interval is torn down once nothing is generating.
+  const hasGenerating = stories.some((s) => s.status === 'generating');
+  useEffect(() => {
+    if (!hasGenerating) return;
+    const id = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(id);
+  }, [hasGenerating]);
 
   // Batch-resolve signed cover URLs for ready rows with a cover path.
   const readyCoverPaths = useMemo(
@@ -120,7 +134,17 @@ export const Dashboard: React.FC<{ onReadStory: (id: string) => void }> = ({ onR
     async (id: string) => {
       setStories((prev) =>
         prev.map((s) =>
-          s.id === id ? { ...s, status: 'generating', error: null, progress: { phase: 'queued' } } : s,
+          s.id === id
+            ? {
+                ...s,
+                status: 'generating',
+                error: null,
+                progress: { phase: 'queued' },
+                // Refresh updated_at so a stalled row immediately reads as live
+                // again rather than re-tripping the stalled check on next render.
+                updated_at: new Date().toISOString(),
+              }
+            : s,
         ),
       );
       try {
@@ -223,6 +247,10 @@ export const Dashboard: React.FC<{ onReadStory: (id: string) => void }> = ({ onR
                   story={story}
                   coverUrl={story.cover_image_path ? coverUrls[story.cover_image_path] : undefined}
                   isWinnerRevealed={revealedWinners.has(story.id)}
+                  isStalled={
+                    story.status === 'generating' &&
+                    now - new Date(story.updated_at).getTime() > STALLED_AFTER_MS
+                  }
                   onToggleWinner={toggleWinnerReveal}
                   onReadStory={onReadStory}
                   onDelete={handleDelete}
