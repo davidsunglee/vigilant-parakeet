@@ -4,6 +4,7 @@ import { handleRequest, type Deps } from "./index.ts";
 // Minimal fake Supabase client that records the update applied to the story row.
 function makeFakeSupabase() {
   const updates: Array<Record<string, unknown>> = [];
+  const inserted: Array<Record<string, unknown>> = [];
   const client = {
     auth: {
       // deno-lint-ignore require-await
@@ -11,7 +12,8 @@ function makeFakeSupabase() {
     },
     from(_table: string) {
       return {
-        insert(_row: Record<string, unknown>) {
+        insert(row: Record<string, unknown>) {
+          inserted.push(row);
           return {
             select(_cols: string) {
               return {
@@ -31,7 +33,7 @@ function makeFakeSupabase() {
       };
     },
   };
-  return { client, updates };
+  return { client, updates, inserted };
 }
 
 function makeDeps(overrides: Partial<Deps>): Deps {
@@ -99,4 +101,19 @@ Deno.test("successful enqueue returns 200 with storyId", async () => {
   assertEquals(res.status, 200);
   assertEquals(await res.json(), { storyId: "story-456" });
   assertEquals(updates.length, 0);
+});
+
+Deno.test("inserts a generating row with canonical queued progress", async () => {
+  const { client, inserted } = makeFakeSupabase();
+  const deps = makeDeps({
+    // deno-lint-ignore no-explicit-any
+    createClient: (() => client) as any,
+    fetch: () => Promise.resolve(new Response(null, { status: 200 })),
+  });
+
+  await handleRequest(makeRequest(), deps);
+
+  assertEquals(inserted.length, 1);
+  assertEquals(inserted[0].status, "generating");
+  assertEquals(inserted[0].progress, { phase: "queued" });
 });

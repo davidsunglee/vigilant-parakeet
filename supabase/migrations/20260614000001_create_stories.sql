@@ -12,8 +12,7 @@ create table public.stories (
   fierce_mode boolean not null default false,
   cover_image_path text,
   manifest jsonb,
-  progress_step text,
-  progress_pct int not null default 0,
+  progress jsonb,
   error text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()

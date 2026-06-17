@@ -87,8 +87,7 @@ export async function handleRequest(req: Request, deps: Deps = defaultDeps): Pro
       animal_b: animalB,
       art_style: artStyle,
       fierce_mode: fierceMode,
-      progress_step: "Queued…",
-      progress_pct: 0,
+      progress: { phase: "queued" },
     })
     .select("id")
     .single();
