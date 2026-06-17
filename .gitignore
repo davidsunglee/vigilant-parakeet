@@ -19,6 +19,8 @@ trigger/node_modules/
 trigger/.env
 trigger/.env.local
 trigger/local.env
+# Trigger.dev CLI local runtime/cache (dev.lock, watchdog.pid, active-runs, tmp)
+trigger/.trigger/
 supabase/.env.local
 supabase/.branches/
 supabase/.temp/
