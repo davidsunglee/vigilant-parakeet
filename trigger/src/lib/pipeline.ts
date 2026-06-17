@@ -95,6 +95,20 @@ function determineEndingType(isSurprise: boolean): IBattleOutcome['endingType'] 
 }
 
 /**
+ * A persisted narrative is only safe to resume from if every page carries a
+ * non-empty visualPrompt. A page with a blank prompt would be sent to the image
+ * model with no subject, producing a generic off-topic illustration (the cause
+ * of the "showdown/verdict is a random lion" bug). When a checkpoint fails this
+ * check, the narrative is regenerated rather than trusted.
+ */
+function narrativeIsComplete(pages: IPageContent[]): boolean {
+  return (
+    pages.length > 0 &&
+    pages.every((p) => typeof p.visualPrompt === 'string' && p.visualPrompt.trim().length > 0)
+  );
+}
+
+/**
  * Pure generation orchestration with injected I/O. Ported from the client-side
  * StoryGeneratorService: six chapters, surprise-ending roll, cover prompt,
  * parallel narrative+cover batch, page index scheme, and manifest assembly.
@@ -180,7 +194,7 @@ Animal B: ${visualAnchor.animalB.fullDescription}`;
   let rawPages: IPageContent[];
   let coverPath: string;
 
-  if (cp?.outcome && cp?.pages && cp?.checklist) {
+  if (cp?.outcome && cp?.pages && cp?.checklist && narrativeIsComplete(cp.pages)) {
     outcome = cp.outcome;
     checklist = cp.checklist;
     rawPages = cp.pages;
@@ -258,6 +272,17 @@ Animal B: ${visualAnchor.animalB.fullDescription}`;
     });
 
     await deps.db.saveManifest(storyId, { outcome, checklist, pages: rawPages });
+  }
+
+  // Defense-in-depth: never illustrate a page without a subject. A missing or
+  // blank visualPrompt becomes a style-only prompt ("...children's book
+  // illustration. Subject: undefined"), which the image model fills with a
+  // generic off-topic animal. Fail loudly so the run retries instead of
+  // finalizing a story with wrong art.
+  const promptless = rawPages.filter((p) => !p.visualPrompt || p.visualPrompt.trim().length === 0);
+  if (promptless.length > 0) {
+    const indices = promptless.map((p) => p.index).join(', ');
+    throw new Error(`Refusing to illustrate page(s) ${indices}: missing visual prompt`);
   }
 
   // 5. Generate page images (skip-if-exists), bounded for the OpenAI path.

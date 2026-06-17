@@ -68,6 +68,28 @@ const PAYLOAD: GenerateStoryPayload = {
   options: { artStyle: 'watercolor', fierceMode: false },
 };
 
+// A persisted checkpoint manifest as `loadCheckpoint` would return it: animal
+// profiles + visual anchor + a full narrative (outcome, checklist, 14 pages).
+// `showdownVisualPrompt` lets a test simulate the empty-prompt corruption that
+// produced the lion-image bug (showdown/outcome saved without a visualPrompt).
+function makeCheckpoint(showdownVisualPrompt: string) {
+  const pages: any[] = [];
+  for (let i = 0; i < 6; i++) {
+    pages.push({ index: i * 2 + 1, title: 'Chapter', bodyText: 'b', visualPrompt: 'chapter vp', isLeftPage: true });
+    pages.push({ index: i * 2 + 2, title: '', bodyText: 'b', visualPrompt: 'chapter vp', isLeftPage: false });
+  }
+  pages.push({ index: 31, title: 'The Showdown', bodyText: 'They face off!', visualPrompt: showdownVisualPrompt, isLeftPage: true });
+  pages.push({ index: 32, title: 'Outcome', bodyText: 'Lion wins!', visualPrompt: 'Lion stands victorious', isLeftPage: false });
+  return {
+    animalA: { id: 'animalA', commonName: 'Lion', ...mockProfileA },
+    animalB: { id: 'animalB', commonName: 'Tiger', ...mockProfileB },
+    visualAnchor: mockVisualAnchor,
+    outcome: { winnerId: 'animalA', logicalReasoning: 'x', isSurpriseEnding: false, endingType: 'Standard Victory' },
+    checklist: mockOutcomeData.checklist,
+    pages,
+  };
+}
+
 function makeDeps(overrides?: {
   imageExists?: () => Promise<boolean>;
   loadCheckpoint?: () => Promise<any>;
@@ -238,6 +260,31 @@ describe('runGenerationPipeline', () => {
     for (const page of manifest.pages) {
       expect(page.imageUrl).toMatch(/^stories\/story-1\/\d+\.png$/);
     }
+  });
+
+  it('reuses a complete checkpoint without re-running the narrative LLM', async () => {
+    const { deps, llm } = makeDeps({ loadCheckpoint: async () => makeCheckpoint('Both animals staring') });
+    await runGenerationPipeline(deps, PAYLOAD);
+    // Resume optimization: a complete checkpoint skips the narrative phase.
+    expect(llm.getShowdownAndOutcome).toHaveBeenCalledTimes(0);
+    expect(llm.getAspectsForAnimal).toHaveBeenCalledTimes(0);
+  });
+
+  it('regenerates the narrative when a checkpoint page is missing its visualPrompt', async () => {
+    // The lion-bug checkpoint: showdown page saved with an empty visualPrompt.
+    const { deps, llm } = makeDeps({ loadCheckpoint: async () => makeCheckpoint('') });
+    await runGenerationPipeline(deps, PAYLOAD);
+    // Must not trust the corrupt checkpoint — regenerate the narrative instead.
+    expect(llm.getShowdownAndOutcome).toHaveBeenCalledTimes(1);
+  });
+
+  it('fails the run when a page has no visual prompt instead of generating a subjectless image', async () => {
+    const { deps, llm } = makeDeps();
+    llm.getShowdownAndOutcome = mock(async () => ({
+      ...mockOutcomeData,
+      showdownText: { bodyText: 'They face off!', visualPrompt: '   ' },
+    }));
+    await expect(runGenerationPipeline(deps, PAYLOAD)).rejects.toThrow(/visual prompt/i);
   });
 });
 
