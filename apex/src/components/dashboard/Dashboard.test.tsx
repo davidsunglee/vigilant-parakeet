@@ -208,8 +208,7 @@ describe('Dashboard', () => {
           title: null,
           manifest: null,
           cover_image_path: null,
-          progress_step: 'Writing the narrative...',
-          progress_pct: 60,
+          progress: { phase: 'illustrating', page: 8, total: 14 },
         }),
       ]);
       mockResolveSignedUrls.mockResolvedValue({
@@ -244,8 +243,7 @@ describe('Dashboard', () => {
         title: null,
         manifest: null,
         cover_image_path: null,
-        progress_step: 'Queued...',
-        progress_pct: 0,
+        progress: { phase: 'queued' },
         animal_a: 'Eagle',
         animal_b: 'Hawk',
       });

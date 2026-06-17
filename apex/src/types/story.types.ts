@@ -125,8 +125,7 @@ export interface StoryRecord {
   fierce_mode: boolean;
   cover_image_path: string | null;
   manifest: IStoryManifest | null;
-  progress_step: string | null;
-  progress_pct: number;
+  progress: StoryProgress | null;
   error: string | null;
   created_at: string;
   updated_at: string;

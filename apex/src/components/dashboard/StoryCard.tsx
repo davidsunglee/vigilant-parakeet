@@ -1,6 +1,7 @@
 import React from 'react';
 import { BookOpen, Trophy, Eye, AlertTriangle, Trash2 } from 'lucide-react';
 import { StoryRecord } from '../../types/story.types';
+import { describeProgress } from './describeProgress';
 
 /** Resolves the human-readable winner label from a ready story's manifest. */
 export function winnerLabel(story: StoryRecord): string {
@@ -20,6 +21,8 @@ export interface StoryCardProps {
   onToggleWinner: (id: string) => void;
   onReadStory: (id: string) => void;
   onDelete: (id: string) => void;
+  onWatch?: (id: string) => void;
+  onRetry?: (id: string) => void;
 }
 
 export const StoryCard = React.memo<StoryCardProps>(function StoryCard({
@@ -29,6 +32,8 @@ export const StoryCard = React.memo<StoryCardProps>(function StoryCard({
   onToggleWinner,
   onReadStory,
   onDelete,
+  onWatch,
+  onRetry,
 }) {
   const titleText = story.title ?? `${story.animal_a} vs ${story.animal_b}`;
 
@@ -62,30 +67,50 @@ export const StoryCard = React.memo<StoryCardProps>(function StoryCard({
           </>
         )}
 
-        {story.status === 'generating' && (
-          <div className="rr-press">
-            <span className="rr-press-amp" aria-hidden="true">&amp;</span>
-            <span className="rr-sweep" aria-hidden="true" />
-            <div className="rr-progress">
-              <div className="rr-ptrack">
-                <div
-                  className="rr-pbar"
-                  style={{ width: `${story.progress_pct}%` }}
-                  role="progressbar"
-                  aria-label="Story generation progress"
-                  aria-valuenow={story.progress_pct}
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                />
+        {story.status === 'generating' && (() => {
+          const view = describeProgress(story.status, story.progress);
+          const press = (
+            <div className="rr-press">
+              <span className="rr-press-cap">On the press</span>
+              <span className="rr-press-amp" aria-hidden="true">&amp;</span>
+              <span className="rr-sweep" aria-hidden="true" />
+              {onWatch && <span className="rr-watch" aria-hidden="true">Watch it print &rsaquo;</span>}
+              <div className="rr-progress">
+                <p className="rr-pstep">{view.label}</p>
+                <div className="rr-ptrack">
+                  <div
+                    className="rr-pbar"
+                    style={{ width: `${view.pct}%` }}
+                    role="progressbar"
+                    aria-label="Story generation progress"
+                    aria-valuenow={view.pct}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                  />
+                </div>
+                {view.phase === 'illustrating' && view.total != null && (
+                  <p className="rr-pcount">{view.page} of {view.total}</p>
+                )}
               </div>
-              <p className="rr-pstep">{story.progress_step ?? 'Working...'}</p>
             </div>
-            <span className="rr-press-cap">On the press</span>
-          </div>
-        )}
+          );
+          return onWatch ? (
+            <button
+              type="button"
+              className="rr-press-open"
+              onClick={() => onWatch(story.id)}
+              aria-label={`Watch ${titleText} being printed`}
+            >
+              {press}
+            </button>
+          ) : (
+            press
+          );
+        })()}
 
         {story.status === 'failed' && (
           <div className="rr-failed" aria-hidden="true">
+            <span className="rr-fail-cap">The press jammed</span>
             <span className="rr-fail-mark">!</span>
           </div>
         )}
@@ -116,14 +141,21 @@ export const StoryCard = React.memo<StoryCardProps>(function StoryCard({
               <AlertTriangle size={13} /> This matchup did not come together.{' '}
               {story.error ?? 'Unknown error'}
             </p>
-            <button
-              type="button"
-              className="rr-remove-text"
-              aria-label="Remove story"
-              onClick={() => onDelete(story.id)}
-            >
-              Remove
-            </button>
+            <div className="rr-fail-actions">
+              {onRetry && (
+                <button type="button" className="rr-retry" onClick={() => onRetry(story.id)}>
+                  Try again
+                </button>
+              )}
+              <button
+                type="button"
+                className="rr-remove-text"
+                aria-label="Remove story"
+                onClick={() => onDelete(story.id)}
+              >
+                Remove
+              </button>
+            </div>
           </>
         )}
       </div>

@@ -202,7 +202,29 @@
 
 /* generating: on the press */
 .rr-card--generating .rr-cover { background: linear-gradient(160deg, #cfe0d6, #6f9b78); }
-.rr-press { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+.rr-press { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem; }
+.rr-press-open { position: absolute; inset: 0; width: 100%; padding: 0; border: none; background: none; cursor: pointer; }
+.rr-press-open:focus-visible { outline: none; box-shadow: inset 0 0 0 3px var(--apex-focus); }
+.rr-watch {
+  position: relative; z-index: 1;
+  font-size: 0.62rem; font-weight: 700; letter-spacing: 0.02em; color: #fbf5e6;
+  background: rgba(0, 0, 0, 0.22); border: 1px solid rgba(251, 245, 230, 0.4);
+  border-radius: 20px; padding: 0.2rem 0.55rem;
+}
+.rr-pcount { font-size: 0.58rem; color: #eafaec; text-align: center; margin-top: 0.2rem; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4); }
+.rr-fail-cap {
+  position: absolute; top: 8px; left: 0; right: 0; text-align: center;
+  font-size: 0.56rem; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase;
+  color: rgba(255, 245, 240, 0.82);
+}
+.rr-fail-actions { display: flex; gap: 0.5rem; margin-top: 0.45rem; }
+.rr-retry {
+  padding: 0.3rem 0.7rem; border-radius: 7px;
+  border: 1px solid rgba(62, 107, 74, 0.4); color: var(--apex-forest);
+  background: rgba(62, 107, 74, 0.08); font-size: 0.76rem; font-weight: 700; cursor: pointer;
+}
+.rr-retry:hover { background: rgba(62, 107, 74, 0.16); }
+.rr-retry:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--apex-focus); }
 .rr-press-amp { font-family: var(--apex-font-display); font-size: 1.9rem; color: var(--apex-gilt); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25); }
 .rr-sweep {
   position: absolute; top: 0; bottom: 0; width: 42%; left: -42%;
