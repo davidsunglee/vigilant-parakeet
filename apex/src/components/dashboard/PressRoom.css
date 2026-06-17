@@ -64,7 +64,7 @@
 
 .pr-rule { width: 100%; max-width: 340px; }
 .pr-track { height: 5px; background: rgba(120, 90, 40, 0.16); border-radius: 3px; overflow: hidden; }
-.pr-fill { height: 100%; background: linear-gradient(90deg, var(--apex-gilt), #e3c873); border-radius: 3px; transition: width 0.4s var(--apex-ease); }
+.pr-fill { height: 100%; background: linear-gradient(90deg, var(--apex-gilt), #e3c873); border-radius: 3px; }
 .pr-count { font-size: 0.78rem; color: var(--apex-brown); margin-top: 0.5rem; letter-spacing: 0.03em; }
 
 .pr-bed {
@@ -131,6 +131,7 @@
   .press-room { animation: prFadeIn 0.25s var(--apex-ease); }
   .pr-cover-img { animation: prDevelopIn 0.6s var(--apex-ease); }
   .pr-plate.is-done { animation: prInk 0.3s var(--apex-ease); }
+  .pr-fill { transition: width 0.4s var(--apex-ease); }
   @keyframes prFadeIn { from { opacity: 0; } to { opacity: 1; } }
   @keyframes prDevelopIn { from { opacity: 0; filter: saturate(0.4) blur(4px); } to { opacity: 1; filter: none; } }
   @keyframes prInk { from { transform: scale(0.86); opacity: 0.3; } to { transform: scale(1); opacity: 1; } }
