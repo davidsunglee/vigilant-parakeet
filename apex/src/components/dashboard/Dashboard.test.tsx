@@ -15,6 +15,7 @@ vi.mock('../../services/CatalogService', () => ({
     createStory: vi.fn(),
     resolveSignedUrls: vi.fn(),
     deleteStory: vi.fn(),
+    retryStory: vi.fn(),
   },
 }));
 
@@ -41,6 +42,7 @@ const mockSubscribe = CatalogService.subscribeToStories as ReturnType<typeof vi.
 const mockCreateStory = CatalogService.createStory as ReturnType<typeof vi.fn>;
 const mockResolveSignedUrls = CatalogService.resolveSignedUrls as ReturnType<typeof vi.fn>;
 const mockDeleteStory = CatalogService.deleteStory as ReturnType<typeof vi.fn>;
+const mockRetryStory = CatalogService.retryStory as ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
   realtimeHandler = null;
@@ -49,6 +51,8 @@ beforeEach(() => {
   mockCreateStory.mockReset();
   mockResolveSignedUrls.mockReset();
   mockDeleteStory.mockReset();
+  mockRetryStory.mockReset();
+  mockRetryStory.mockResolvedValue('story-1');
   mockSignOut.mockReset();
 
   mockListStories.mockResolvedValue([]);
@@ -341,6 +345,49 @@ describe('Dashboard', () => {
       expect(screen.queryByLabelText(/llm provider/i)).not.toBeInTheDocument();
       expect(screen.queryByLabelText(/image provider/i)).not.toBeInTheDocument();
       expect(screen.queryByLabelText(/image model/i)).not.toBeInTheDocument();
+    });
+  });
+
+  describe('press room and retry', () => {
+    it('opens the Press Room from a generating card', async () => {
+      mockListStories.mockResolvedValue([
+        createMockStoryRecord({
+          id: 'g1',
+          status: 'generating',
+          title: null,
+          manifest: null,
+          cover_image_path: null,
+          progress: { phase: 'illustrating', page: 3, total: 14 },
+          animal_a: 'Lion',
+          animal_b: 'Wolverine',
+        }),
+      ]);
+      renderDashboard();
+      await waitFor(() => expect(screen.getByRole('progressbar')).toBeInTheDocument());
+
+      const user = userEvent.setup();
+      await user.click(screen.getByRole('button', { name: /watch lion vs wolverine being printed/i }));
+      expect(screen.getByRole('dialog', { name: /press room/i })).toBeInTheDocument();
+    });
+
+    it('retries a failed story with an optimistic flip to generating', async () => {
+      mockListStories.mockResolvedValue([
+        createMockStoryRecord({
+          id: 'fail-1',
+          status: 'failed',
+          title: null,
+          manifest: null,
+          cover_image_path: null,
+          error: 'boom',
+        }),
+      ]);
+      renderDashboard();
+      await waitFor(() => expect(screen.getByText(/boom/i)).toBeInTheDocument());
+
+      const user = userEvent.setup();
+      await user.click(screen.getByRole('button', { name: /try again/i }));
+      expect(mockRetryStory).toHaveBeenCalledWith('fail-1');
+      await waitFor(() => expect(screen.getByRole('progressbar')).toBeInTheDocument());
     });
   });
 });

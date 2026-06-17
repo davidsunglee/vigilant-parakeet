@@ -130,6 +130,22 @@ export class CatalogService {
   }
 
   /**
+   * Re-triggers generation for a failed story. The `retry-story` Edge Function
+   * verifies ownership, requires a `failed` row, resets it to `generating`, and
+   * re-enqueues the task (which resumes from the checkpoint). Returns the storyId.
+   */
+  static async retryStory(id: string): Promise<string> {
+    const { data, error } = await supabase.functions.invoke('retry-story', {
+      body: { storyId: id },
+    });
+
+    if (error) throw error;
+    const storyId = (data as { storyId?: string } | null)?.storyId;
+    if (!storyId) throw new Error('retry-story did not return a storyId');
+    return storyId;
+  }
+
+  /**
    * Deletes a story row (RLS-scoped to the owner).
    *
    * NOTE: Storage object cleanup is intentionally deferred for this slice.

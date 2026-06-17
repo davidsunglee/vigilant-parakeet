@@ -7,6 +7,7 @@ import { supabase } from '../../lib/supabase';
 import { Masthead } from './Masthead';
 import { MatchupComposer } from './MatchupComposer';
 import { StoryCard } from './StoryCard';
+import { PressRoom } from './PressRoom';
 import './Dashboard.css';
 
 type SortOrder = 'newest' | 'oldest' | 'az';
@@ -23,6 +24,7 @@ export const Dashboard: React.FC<{ onReadStory: (id: string) => void }> = ({ onR
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<SortOrder>('newest');
   const [composerOpen, setComposerOpen] = useState(false);
+  const [watchingId, setWatchingId] = useState<string | null>(null);
 
   const toggleWinnerReveal = useCallback((id: string) => {
     setRevealedWinners((prev) => {
@@ -110,6 +112,24 @@ export const Dashboard: React.FC<{ onReadStory: (id: string) => void }> = ({ onR
         await CatalogService.deleteStory(id);
       } catch (error) {
         console.error('[Dashboard] Delete failed:', error);
+        await loadStories();
+      }
+    },
+    [loadStories],
+  );
+
+  // Optimistic retry: flip the row back to generating, then re-enqueue.
+  const handleRetry = useCallback(
+    async (id: string) => {
+      setStories((prev) =>
+        prev.map((s) =>
+          s.id === id ? { ...s, status: 'generating', error: null, progress: { phase: 'queued' } } : s,
+        ),
+      );
+      try {
+        await CatalogService.retryStory(id);
+      } catch (error) {
+        console.error('[Dashboard] Retry failed:', error);
         await loadStories();
       }
     },
@@ -209,6 +229,8 @@ export const Dashboard: React.FC<{ onReadStory: (id: string) => void }> = ({ onR
                   onToggleWinner={toggleWinnerReveal}
                   onReadStory={onReadStory}
                   onDelete={handleDelete}
+                  onWatch={(id) => setWatchingId(id)}
+                  onRetry={handleRetry}
                 />
               ))}
             </div>
@@ -224,6 +246,24 @@ export const Dashboard: React.FC<{ onReadStory: (id: string) => void }> = ({ onR
               onClose={() => setComposerOpen(false)}
             />
           )}
+
+          {watchingId && (() => {
+            const watched = stories.find((s) => s.id === watchingId);
+            if (!watched) return null;
+            return (
+              <PressRoom
+                story={watched}
+                coverUrl={watched.cover_image_path ? coverUrls[watched.cover_image_path] : undefined}
+                onReadStory={onReadStory}
+                onRetry={handleRetry}
+                onDelete={(id) => {
+                  handleDelete(id);
+                  setWatchingId(null);
+                }}
+                onClose={() => setWatchingId(null)}
+              />
+            );
+          })()}
         </>
       )}
     </div>
