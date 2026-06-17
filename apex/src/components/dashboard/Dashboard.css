@@ -179,12 +179,26 @@
 .rr-remove:hover { color: var(--apex-error); border-color: var(--apex-error); }
 .rr-read:focus-visible, .rr-remove:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--apex-focus); }
 
-.rr-meta { margin-top: 0.6rem; }
+.rr-meta { margin-top: 0.6rem; display: flex; flex-direction: column; align-items: center; }
+/* Title is a centered three-line matchup stack: contender / gilt & / contender.
+   One contender per line keeps every card the same height; each name clamps to a
+   single line so an unusually long name can't break the grid. */
 .rr-title {
-  font-family: var(--apex-font-display); font-size: 0.98rem; font-weight: 700; color: var(--apex-ink);
+  width: 100%;
+  display: flex; flex-direction: column; align-items: center; gap: 0.04rem;
+  font-family: var(--apex-font-display); font-weight: 700; color: var(--apex-ink);
+  text-align: center;
+}
+.rr-title-name {
+  max-width: 100%;
+  font-size: 0.98rem; line-height: 1.2;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.rr-date { font-size: 0.72rem; color: var(--apex-brown-mute); margin-top: 0.1rem; }
+.rr-title-amp {
+  font-family: var(--apex-font-display); font-size: 0.78rem; line-height: 1;
+  color: var(--apex-gilt);
+}
+.rr-date { font-size: 0.72rem; color: var(--apex-brown-mute); margin-top: 0.1rem; text-align: center; }
 
 .rr-reveal, .rr-winner {
   display: inline-flex; align-items: center; gap: 0.35rem;

@@ -1,5 +1,4 @@
 export type ArtStyleId =
-    | 'surprise'
     | 'watercolor'
     | 'colored-pencil'
     | 'storybook-painterly'
@@ -9,12 +8,11 @@ export type ArtStyleId =
 export interface ArtStyleOption {
     readonly id: ArtStyleId;
     readonly label: string;
-    /** Concrete prompt-ready descriptor. Undefined for `surprise`, where the LLM picks. */
+    /** Concrete prompt-ready descriptor woven into the illustration prompts. */
     readonly descriptor?: string;
 }
 
 export const ART_STYLE_OPTIONS: readonly ArtStyleOption[] = [
-    { id: 'surprise', label: 'Surprise Me' },
     {
         id: 'watercolor',
         label: 'Watercolor',

@@ -72,7 +72,7 @@ export function createMockStoryRecord(overrides: Partial<StoryRecord> = {}): Sto
     animal_a: 'Lion',
     animal_b: 'Tiger',
     title: 'Who Would Win? Lion vs. Tiger',
-    art_style: 'surprise',
+    art_style: 'watercolor',
     fierce_mode: false,
     cover_image_path: 'stories/story-1/cover.png',
     manifest: createMockStory(),

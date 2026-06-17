@@ -120,12 +120,12 @@ describe('CatalogService', () => {
       const id = await CatalogService.createStory({
         animalA: 'Lion',
         animalB: 'Tiger',
-        artStyle: 'surprise',
+        artStyle: 'watercolor',
         fierceMode: true,
       });
 
       expect(h.calls.invoke).toHaveBeenCalledWith('create-story', {
-        body: { animalA: 'Lion', animalB: 'Tiger', artStyle: 'surprise', fierceMode: true },
+        body: { animalA: 'Lion', animalB: 'Tiger', artStyle: 'watercolor', fierceMode: true },
       });
       expect(id).toBe('new-story-id');
     });
@@ -134,7 +134,7 @@ describe('CatalogService', () => {
       h.state.invokeResult = { data: null, error: new Error('unauthorized') };
 
       await expect(
-        CatalogService.createStory({ animalA: 'Lion', animalB: 'Tiger', artStyle: 'surprise', fierceMode: false }),
+        CatalogService.createStory({ animalA: 'Lion', animalB: 'Tiger', artStyle: 'watercolor', fierceMode: false }),
       ).rejects.toThrow('unauthorized');
     });
   });

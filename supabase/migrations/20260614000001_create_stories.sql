@@ -8,7 +8,7 @@ create table public.stories (
   animal_a text not null,
   animal_b text not null,
   title text,
-  art_style text not null default 'surprise',
+  art_style text not null default 'watercolor',
   fierce_mode boolean not null default false,
   cover_image_path text,
   manifest jsonb,

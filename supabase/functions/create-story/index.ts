@@ -74,7 +74,7 @@ export async function handleRequest(req: Request, deps: Deps = defaultDeps): Pro
     });
   }
 
-  const artStyle = (typeof body.artStyle === "string" && body.artStyle) ? body.artStyle : "surprise";
+  const artStyle = (typeof body.artStyle === "string" && body.artStyle) ? body.artStyle : "watercolor";
   const fierceMode = typeof body.fierceMode === "boolean" ? body.fierceMode : false;
 
   // Insert the story row

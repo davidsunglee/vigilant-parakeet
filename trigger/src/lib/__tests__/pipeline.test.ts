@@ -65,7 +65,7 @@ const PAYLOAD: GenerateStoryPayload = {
   ownerId: 'owner-1',
   animalA: 'Lion',
   animalB: 'Tiger',
-  options: { artStyle: 'surprise', fierceMode: false },
+  options: { artStyle: 'watercolor', fierceMode: false },
 };
 
 function makeDeps(overrides?: {

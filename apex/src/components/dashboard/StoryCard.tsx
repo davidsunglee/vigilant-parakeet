@@ -3,6 +3,30 @@ import { BookOpen, Trophy, Eye, AlertTriangle, Trash2 } from 'lucide-react';
 import { StoryRecord } from '../../types/story.types';
 import { describeProgress } from './describeProgress';
 
+/** Title-cases each whitespace-separated word ("thresher shark" -> "Thresher Shark"). */
+function toTitleCase(value: string): string {
+  return value.replace(/\S+/g, (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase());
+}
+
+/**
+ * Title-cased contender names for a matchup. Prefers the manifest's normalized
+ * common names (matching the reader header), falling back to the raw contender
+ * fields while a story is still generating. Title-casing keeps every card's
+ * formatting uniform regardless of how the source was capitalized.
+ */
+export function matchupNames(story: StoryRecord): { a: string; b: string } {
+  return {
+    a: toTitleCase(story.manifest?.animalA.commonName ?? story.animal_a),
+    b: toTitleCase(story.manifest?.animalB.commonName ?? story.animal_b),
+  };
+}
+
+/** Clean matchup label ("Giraffe & Chimpanzee") for sorting and aria labels. */
+export function matchupTitle(story: StoryRecord): string {
+  const { a, b } = matchupNames(story);
+  return `${a} & ${b}`;
+}
+
 /** Resolves the human-readable winner label from a ready story's manifest. */
 export function winnerLabel(story: StoryRecord): string {
   const outcome = story.manifest?.outcome;
@@ -35,7 +59,8 @@ export const StoryCard = React.memo<StoryCardProps>(function StoryCard({
   onWatch,
   onRetry,
 }) {
-  const titleText = story.title ?? `${story.animal_a} vs ${story.animal_b}`;
+  const { a: nameA, b: nameB } = matchupNames(story);
+  const titleText = `${nameA} & ${nameB}`;
 
   return (
     <article className={`rr-card rr-card--${story.status}`}>
@@ -117,7 +142,11 @@ export const StoryCard = React.memo<StoryCardProps>(function StoryCard({
       </div>
 
       <div className="rr-meta">
-        <h3 className="rr-title">{titleText}</h3>
+        <h3 className="rr-title" aria-label={titleText}>
+          <span className="rr-title-name" title={nameA}>{nameA}</span>
+          <span className="rr-title-amp" aria-hidden="true">&amp;</span>
+          <span className="rr-title-name" title={nameB}>{nameB}</span>
+        </h3>
         <p className="rr-date">
           {story.status === 'generating'
             ? 'Just now'

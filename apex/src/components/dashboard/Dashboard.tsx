@@ -7,15 +7,11 @@ import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { Masthead } from './Masthead';
 import { MatchupComposer } from './MatchupComposer';
-import { StoryCard } from './StoryCard';
+import { StoryCard, matchupTitle } from './StoryCard';
 import { PressRoom } from './PressRoom';
 import './Dashboard.css';
 
 type SortOrder = 'newest' | 'oldest' | 'az';
-
-function sortKey(story: StoryRecord): string {
-  return story.title ?? `${story.animal_a} vs ${story.animal_b}`;
-}
 
 export const Dashboard: React.FC<{ onReadStory: (id: string) => void }> = ({ onReadStory }) => {
   const { user, signOut } = useAuth();
@@ -160,7 +156,7 @@ export const Dashboard: React.FC<{ onReadStory: (id: string) => void }> = ({ onR
     } else if (sort === 'oldest') {
       sorted.sort((a, b) => a.created_at.localeCompare(b.created_at));
     } else {
-      sorted.sort((a, b) => sortKey(a).localeCompare(sortKey(b)));
+      sorted.sort((a, b) => matchupTitle(a).localeCompare(matchupTitle(b)));
     }
     return sorted;
   }, [stories, search, sort]);

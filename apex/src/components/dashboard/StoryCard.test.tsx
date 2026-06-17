@@ -91,7 +91,7 @@ describe('StoryCard', () => {
       />,
     );
     const user = userEvent.setup();
-    await user.click(screen.getByRole('button', { name: /watch lion vs wolverine being printed/i }));
+    await user.click(screen.getByRole('button', { name: /watch lion & wolverine being printed/i }));
     expect(onWatch).toHaveBeenCalledWith('gen-2');
   });
 

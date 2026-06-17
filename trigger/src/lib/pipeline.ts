@@ -26,7 +26,7 @@ export const timers = {
   sleep: (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)),
 };
 
-const DEFAULT_OPTIONS: StoryGeneratorOptions = { artStyle: 'surprise', fierceMode: false };
+const DEFAULT_OPTIONS: StoryGeneratorOptions = { artStyle: 'watercolor', fierceMode: false };
 
 const CHAPTERS: { name: string; brief: string }[] = [
   {

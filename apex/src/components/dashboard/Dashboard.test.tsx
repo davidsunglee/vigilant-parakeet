@@ -126,7 +126,7 @@ describe('Dashboard', () => {
         expect(a).toHaveValue('');
         expect(b).toHaveValue('');
       });
-      expect(screen.getByRole('radio', { name: /surprise me/i })).toBeChecked();
+      expect(screen.getByRole('radio', { name: /watercolor/i })).toBeChecked();
     });
 
     it('stays interactive while createStory is pending (no blocking overlay)', async () => {
@@ -143,7 +143,7 @@ describe('Dashboard', () => {
       await user.click(screen.getByRole('button', { name: /conjure the book/i }));
 
       expect(screen.queryByText(/creating your book/i)).not.toBeInTheDocument();
-      expect(screen.getByRole('radio', { name: /surprise me/i })).toBeEnabled();
+      expect(screen.getByRole('radio', { name: /watercolor/i })).toBeEnabled();
     });
 
     it('opens the composer overlay from the masthead stamp when a library exists', async () => {
@@ -253,10 +253,10 @@ describe('Dashboard', () => {
       });
       dispatchRealtime({ eventType: 'INSERT', new: inserted, old: {} });
       await waitFor(() => {
-        expect(screen.getByText(/eagle vs hawk/i)).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: /eagle & hawk/i })).toBeInTheDocument();
       });
       dispatchRealtime({ eventType: 'INSERT', new: inserted, old: {} });
-      expect(screen.getAllByText(/eagle vs hawk/i)).toHaveLength(1);
+      expect(screen.getAllByRole('heading', { name: /eagle & hawk/i })).toHaveLength(1);
     });
   });
 
@@ -271,11 +271,11 @@ describe('Dashboard', () => {
       renderDashboard();
 
       await waitFor(() => {
-        expect(screen.getByText('Who Would Win? Lion vs. Tiger')).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Lion & Tiger' })).toBeInTheDocument();
       });
       await user.click(screen.getByRole('button', { name: /remove story/i }));
       await waitFor(() => {
-        expect(screen.queryByText('Who Would Win? Lion vs. Tiger')).not.toBeInTheDocument();
+        expect(screen.queryByRole('heading', { name: 'Lion & Tiger' })).not.toBeInTheDocument();
       });
       expect(mockDeleteStory).toHaveBeenCalledWith('story-1');
     });
@@ -285,39 +285,39 @@ describe('Dashboard', () => {
     it('filters by contender name', async () => {
       const user = userEvent.setup();
       mockListStories.mockResolvedValue([
-        createMockStoryRecord({ id: 's1', title: 'Lion vs Tiger', animal_a: 'Lion', animal_b: 'Tiger', cover_image_path: null }),
-        createMockStoryRecord({ id: 's2', title: 'Orca vs Shark', animal_a: 'Orca', animal_b: 'Shark', cover_image_path: null }),
+        createMockStoryRecord({ id: 's1', title: 'Lion vs Tiger', animal_a: 'Lion', animal_b: 'Tiger', manifest: null, cover_image_path: null }),
+        createMockStoryRecord({ id: 's2', title: 'Orca vs Shark', animal_a: 'Orca', animal_b: 'Shark', manifest: null, cover_image_path: null }),
       ]);
       renderDashboard();
 
       await waitFor(() => {
-        expect(screen.getByText('Orca vs Shark')).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Orca & Shark' })).toBeInTheDocument();
       });
       await user.type(screen.getByLabelText(/search by name/i), 'orca');
-      expect(screen.queryByText('Lion vs Tiger')).not.toBeInTheDocument();
-      expect(screen.getByText('Orca vs Shark')).toBeInTheDocument();
+      expect(screen.queryByRole('heading', { name: 'Lion & Tiger' })).not.toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Orca & Shark' })).toBeInTheDocument();
     });
 
     it('reorders the shelf when the sort control changes (newest default, then A to Z)', async () => {
       const user = userEvent.setup();
       mockListStories.mockResolvedValue([
-        createMockStoryRecord({ id: 'z1', title: 'Zebra vs Ant', created_at: '2026-06-15T00:00:00.000Z', cover_image_path: null }),
-        createMockStoryRecord({ id: 'a1', title: 'Aardvark vs Bee', created_at: '2026-06-10T00:00:00.000Z', cover_image_path: null }),
+        createMockStoryRecord({ id: 'z1', title: 'Zebra vs Ant', animal_a: 'Zebra', animal_b: 'Ant', manifest: null, created_at: '2026-06-15T00:00:00.000Z', cover_image_path: null }),
+        createMockStoryRecord({ id: 'a1', title: 'Aardvark vs Bee', animal_a: 'Aardvark', animal_b: 'Bee', manifest: null, created_at: '2026-06-10T00:00:00.000Z', cover_image_path: null }),
       ]);
       renderDashboard();
 
       await waitFor(() => {
-        expect(screen.getByText('Aardvark vs Bee')).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Aardvark & Bee' })).toBeInTheDocument();
       });
       // Default newest-first: Zebra (06-15) precedes Aardvark (06-10).
       expect(
-        screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent),
-      ).toEqual(['Zebra vs Ant', 'Aardvark vs Bee']);
+        screen.getAllByRole('heading', { level: 3 }).map((h) => h.getAttribute('aria-label')),
+      ).toEqual(['Zebra & Ant', 'Aardvark & Bee']);
 
       await user.selectOptions(screen.getByLabelText(/^sort$/i), 'az');
       expect(
-        screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent),
-      ).toEqual(['Aardvark vs Bee', 'Zebra vs Ant']);
+        screen.getAllByRole('heading', { level: 3 }).map((h) => h.getAttribute('aria-label')),
+      ).toEqual(['Aardvark & Bee', 'Zebra & Ant']);
     });
   });
 
@@ -366,7 +366,7 @@ describe('Dashboard', () => {
       await waitFor(() => expect(screen.getByRole('progressbar')).toBeInTheDocument());
 
       const user = userEvent.setup();
-      await user.click(screen.getByRole('button', { name: /watch lion vs wolverine being printed/i }));
+      await user.click(screen.getByRole('button', { name: /watch lion & wolverine being printed/i }));
       expect(screen.getByRole('dialog', { name: /press room/i })).toBeInTheDocument();
     });
 

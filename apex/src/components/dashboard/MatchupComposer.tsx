@@ -12,7 +12,7 @@ export interface MatchupComposerProps {
 export function MatchupComposer({ variant, onCreate, onClose }: MatchupComposerProps) {
   const [animalA, setAnimalA] = useState('');
   const [animalB, setAnimalB] = useState('');
-  const [artStyle, setArtStyle] = useState<ArtStyleId>('surprise');
+  const [artStyle, setArtStyle] = useState<ArtStyleId>(ART_STYLE_OPTIONS[0].id);
   const [fierceMode, setFierceMode] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -57,7 +57,7 @@ export function MatchupComposer({ variant, onCreate, onClose }: MatchupComposerP
   function reset() {
     setAnimalA('');
     setAnimalB('');
-    setArtStyle('surprise');
+    setArtStyle(ART_STYLE_OPTIONS[0].id);
     setFierceMode(false);
   }
 

@@ -3,18 +3,17 @@ import userEvent from '@testing-library/user-event';
 import { MatchupComposer } from './MatchupComposer';
 
 describe('MatchupComposer', () => {
-  it('renders the six art-style chips in order with Painterly renamed, default Surprise Me', () => {
+  it('renders the five art-style chips in order with Painterly renamed, default Watercolor', () => {
     render(<MatchupComposer variant="inline" onCreate={vi.fn()} />);
     const radios = screen.getAllByRole('radio');
     expect(radios.map((r) => r.getAttribute('aria-label') ?? r.textContent?.trim())).toEqual([
-      'Surprise Me',
       'Watercolor',
       'Colored Pencil Sketch',
       'Painterly',
       'Graphic Novel',
       '3D Animated',
     ]);
-    expect(screen.getByRole('radio', { name: /surprise me/i })).toBeChecked();
+    expect(screen.getByRole('radio', { name: /watercolor/i })).toBeChecked();
   });
 
   it('submits the trimmed values and resets the form (inline)', async () => {
@@ -26,14 +25,14 @@ describe('MatchupComposer', () => {
     const b = screen.getByLabelText(/second contender/i) as HTMLInputElement;
     await user.type(a, 'Lion');
     await user.type(b, 'Tiger');
-    await user.click(screen.getByRole('radio', { name: /watercolor/i }));
+    await user.click(screen.getByRole('radio', { name: /graphic novel/i }));
     await user.click(screen.getByLabelText(/fierce mode/i));
     await user.click(screen.getByRole('button', { name: /conjure the book/i }));
 
     expect(onCreate).toHaveBeenCalledWith({
       animalA: 'Lion',
       animalB: 'Tiger',
-      artStyle: 'watercolor',
+      artStyle: 'graphic-novel',
       fierceMode: true,
     });
 
@@ -41,7 +40,7 @@ describe('MatchupComposer', () => {
       expect(a).toHaveValue('');
       expect(b).toHaveValue('');
     });
-    expect(screen.getByRole('radio', { name: /surprise me/i })).toBeChecked();
+    expect(screen.getByRole('radio', { name: /watercolor/i })).toBeChecked();
     expect(screen.getByLabelText(/fierce mode/i)).not.toBeChecked();
   });
 
