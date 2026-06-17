@@ -35,6 +35,10 @@
   gap: 1rem;
   padding: 1.1rem clamp(1rem, 4vw, 2.2rem);
   border-bottom: 1px solid var(--apex-rule);
+  /* Lift the whole masthead above sibling .rr > * stacking contexts (z-index: 1)
+     so the account dropdown isn't painted over by the browse bar below it.
+     Stays under the modal overlay (z-index: 50). */
+  z-index: 10;
 }
 
 .rr-brand { display: flex; align-items: center; gap: 0.7rem; }
