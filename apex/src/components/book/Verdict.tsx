@@ -22,13 +22,12 @@ export const Verdict: React.FC<VerdictProps> = ({ manifest, outcomePage, signed 
   const artUrl = outcomePage?.imageUrl ? signed[outcomePage.imageUrl] : undefined;
 
   return (
-    <div className={`rd-verdict ${surprise ? 'rd-verdict--surprise' : ''}`}>
-      {artUrl && (
-        <img src={artUrl} alt="The outcome" className="rd-verdict-img" loading="lazy" decoding="async" />
-      )}
-      <div className="rd-verdict-scrim" aria-hidden="true" />
+    <div className={`rd-hero rd-hero--verdict ${surprise ? 'rd-verdict--surprise' : ''}`}>
+      <div className="rd-hero-art">
+        {artUrl && <img src={artUrl} alt="The outcome" loading="lazy" decoding="async" />}
+      </div>
 
-      <div className="rd-verdict-cartouche">
+      <div className="rd-hero-panel rd-verdict-panel">
         <div className="rd-verdict-kicker">The Verdict</div>
 
         {!revealed ? (

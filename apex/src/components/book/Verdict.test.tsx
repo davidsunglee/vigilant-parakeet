@@ -17,6 +17,22 @@ describe('Verdict', () => {
     expect(screen.queryByText('Standard Victory')).not.toBeInTheDocument();
   });
 
+  it('shows the outcome art on top with the verdict text in the panel below', async () => {
+    const manifest = createMockStory();
+    const outcomePage = {
+      index: 32, title: 'Outcome', bodyText: '', visualPrompt: '',
+      imageUrl: 'stories/s/32.png', isLeftPage: false,
+    };
+    render(<Verdict manifest={manifest} outcomePage={outcomePage} signed={{ 'stories/s/32.png': 'https://signed/32.png' }} />);
+
+    const img = screen.getByAltText('The outcome');
+    expect(img).toHaveAttribute('src', 'https://signed/32.png');
+    expect(img.closest('.rd-hero-art')).not.toBeNull();
+
+    await userEvent.setup().click(screen.getByRole('button', { name: /break the seal/i }));
+    expect(screen.getByText('The lion wins due to superior teamwork.').closest('.rd-hero-panel')).not.toBeNull();
+  });
+
   it('reframes a surprise ending as a twist with the ending-type stamp and no victor', async () => {
     const manifest = createMockStoryWithSurprise();
     render(<Verdict manifest={manifest} outcomePage={null} signed={{}} />);
