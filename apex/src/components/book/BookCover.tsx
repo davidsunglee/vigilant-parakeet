@@ -12,19 +12,14 @@ export const BookCover: React.FC<BookCoverProps> = ({ manifest, signed }) => {
   const b = manifest.animalB.commonName;
 
   return (
-    <div className="rd-cover">
-      {coverUrl && (
-        <img
-          src={coverUrl}
-          alt={`${a} versus ${b}`}
-          className="rd-cover-img"
-          loading="lazy"
-          decoding="async"
-        />
-      )}
-      <div className="rd-cover-scrim" aria-hidden="true" />
-      <div className="rd-cover-kicker">An Apex Publication</div>
-      <div className="rd-cover-cartouche">
+    <div className="rd-hero rd-hero--cover">
+      <div className="rd-hero-art">
+        {coverUrl && (
+          <img src={coverUrl} alt={`${a} versus ${b}`} loading="lazy" decoding="async" />
+        )}
+      </div>
+      <div className="rd-hero-panel rd-cover-panel">
+        <div className="rd-cover-kicker">An Apex Publication</div>
         <div className="rd-cover-emblem" aria-hidden="true">&amp;</div>
         <div className="rd-cover-q">Who Would Win?</div>
         <div className="rd-cover-match">

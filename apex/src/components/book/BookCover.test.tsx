@@ -18,6 +18,15 @@ describe('BookCover', () => {
     expect(img).toHaveAttribute('decoding', 'async');
   });
 
+  it('shows the cover art on top and the title text in the panel below', () => {
+    const manifest = createMockStory({ coverImageUrl: 'stories/s/cover.png' });
+    render(<BookCover manifest={manifest} signed={{ 'stories/s/cover.png': 'https://signed/cover.png' }} />);
+
+    expect(screen.getByAltText('Lion versus Tiger').closest('.rd-hero-art')).not.toBeNull();
+    expect(screen.getByText('Who Would Win?').closest('.rd-hero-panel')).not.toBeNull();
+    expect(screen.getByText('Lion').closest('.rd-hero-panel')).not.toBeNull();
+  });
+
   it('renders without an image when the manifest has no cover', () => {
     const manifest = createMockStory({ coverImageUrl: undefined });
     render(<BookCover manifest={manifest} signed={{}} />);

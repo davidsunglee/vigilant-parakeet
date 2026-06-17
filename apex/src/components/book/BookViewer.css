@@ -100,35 +100,35 @@
 .rd-page--right .rd-folio { right: 1.1rem; }
 .rd-single .rd-page .rd-folio { left: 50%; transform: translateX(-50%); }
 
-/* ---- Cover ---- */
-.rd-cover {
-  position: relative; width: min(900px, 94vw); aspect-ratio: 3 / 2; max-height: 84vh;
-  border: 2px solid var(--apex-gilt); border-radius: 4px; overflow: hidden;
-  background: radial-gradient(120% 90% at 50% -10%, var(--apex-paper-hi), var(--apex-paper) 72%, var(--apex-paper-lo));
-  box-shadow: 0 18px 44px rgba(90, 60, 20, 0.3);
+/* ---- Hero pages (cover, showdown, verdict): full 3:2 art + text panel below ---- */
+.rd-hero {
+  display: flex; flex-direction: column;
+  width: min(820px, 92vw); max-height: 84vh;
+  border: 1px solid var(--apex-gilt); border-radius: 5px; overflow: hidden;
+  background: linear-gradient(170deg, var(--apex-surface), var(--apex-paper));
+  box-shadow: 0 16px 40px rgba(90, 60, 20, 0.24);
 }
-.rd-cover-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.rd-cover-scrim { position: absolute; inset: 0; z-index: 1; background: linear-gradient(180deg, rgba(35, 24, 12, 0.3), rgba(35, 24, 12, 0.06) 40%, rgba(35, 24, 12, 0.5)); }
-.rd-cover-kicker {
-  position: absolute; top: 1.1rem; left: 0; right: 0; z-index: 2; text-align: center;
-  font-size: 0.58rem; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: rgba(253, 250, 241, 0.92);
+.rd-hero-art {
+  position: relative; width: 100%; aspect-ratio: 3 / 2;
+  max-height: 56vh; flex-shrink: 0; overflow: hidden;
+  background: linear-gradient(150deg, #cdb88f, #6f5733);
 }
-.rd-cover-cartouche {
-  position: absolute; left: 50%; bottom: 1.8rem; transform: translateX(-50%); z-index: 2;
-  width: min(460px, calc(100% - 3.2rem));
+.rd-hero-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.rd-hero-panel {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto;
   display: flex; flex-direction: column; align-items: center; text-align: center;
-  padding: 1.1rem 1rem 1rem;
-  background: linear-gradient(180deg, rgba(253, 250, 241, 0.95), rgba(248, 240, 222, 0.95));
-  border: 1px solid var(--apex-gilt); border-radius: 4px; box-shadow: 0 8px 22px rgba(40, 25, 10, 0.3);
+  gap: 0.4rem; padding: clamp(0.9rem, 2.4vw, 1.3rem) clamp(1rem, 3vw, 1.8rem) clamp(1rem, 2.6vw, 1.4rem);
 }
-.rd-cover-cartouche::before { content: ''; position: absolute; inset: 4px; border: 1px solid var(--apex-rule); border-radius: 2px; pointer-events: none; }
+
+/* Cover panel */
+.rd-cover-kicker { font-size: 0.58rem; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; color: #a8854a; }
 .rd-cover-emblem {
-  width: 38px; height: 38px; border-radius: 50%; margin-bottom: 0.4rem;
+  width: 38px; height: 38px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   font-family: var(--apex-font-display); font-size: 1.25rem; color: var(--apex-forest);
   border: 1.5px solid var(--apex-gilt); box-shadow: inset 0 0 0 2px var(--apex-paper-hi);
 }
-.rd-cover-q { font-size: 0.62rem; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: #a8854a; margin-bottom: 0.5rem; }
+.rd-cover-q { font-size: 0.62rem; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: #a8854a; }
 .rd-cover-match { display: flex; align-items: center; gap: 0.6rem; }
 .rd-cover-name { font-family: var(--apex-font-display); font-weight: 600; font-size: 1.15rem; color: var(--apex-ink); }
 .rd-cover-amp { font-family: var(--apex-font-display); font-size: 1.45rem; color: var(--apex-gilt); line-height: 1; }
