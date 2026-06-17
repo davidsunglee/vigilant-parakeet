@@ -1,4 +1,4 @@
-// Duplicated from apex/src/types/story.types.ts — keep in sync.
+// Duplicated from apex/src/types/story.types.ts. Keep in sync.
 // Image fields (`coverImageUrl`, `IPageContent.imageUrl`) now hold Supabase Storage paths, not base64.
 
 export interface IBiologicalStats {

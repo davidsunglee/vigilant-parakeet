@@ -27,7 +27,7 @@ export type StoryChangeHandler = (
 export class CatalogService {
   /**
    * Lists the signed-in user's stories, newest first. RLS scopes the result to
-   * the authenticated owner — no client-side owner filter is needed.
+   * the authenticated owner, so no client-side owner filter is needed.
    */
   static async listStories(): Promise<StoryRecord[]> {
     const { data, error } = await supabase
@@ -57,7 +57,7 @@ export class CatalogService {
    * Triggers a new server-side generation. The Edge Function verifies the
    * caller's JWT (attached automatically by supabase-js), inserts a
    * `generating` row, enqueues the Trigger.dev task, and returns `{ storyId }`
-   * immediately — the row then arrives/updates via the Realtime subscription.
+   * immediately, and the row then arrives/updates via the Realtime subscription.
    */
   static async createStory(input: CreateStoryInput): Promise<string> {
     const { animalA, animalB, artStyle, fierceMode } = input;
