@@ -1,0 +1,137 @@
+/* The Press Room: the focused, opt-in generation view. On --apex-* tokens. */
+.press-room {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: clamp(1rem, 4vw, 2.4rem);
+  gap: clamp(0.8rem, 3vh, 1.6rem);
+  color: var(--apex-ink);
+  font-family: var(--apex-font-ui);
+  background:
+    radial-gradient(130% 100% at 50% -10%,
+      var(--apex-paper-hi) 0%, var(--apex-paper) 78%, var(--apex-paper-lo) 100%);
+  outline: none;
+}
+
+.pr-top {
+  width: 100%;
+  max-width: 720px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.pr-back {
+  display: inline-flex; align-items: center; gap: 0.3rem;
+  font-size: 0.85rem; font-weight: 600; color: var(--apex-brown);
+  background: none; cursor: pointer;
+}
+.pr-back:hover { color: var(--apex-ink); }
+.pr-back:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--apex-focus); border-radius: 6px; }
+.pr-runtitle { font-family: var(--apex-font-display); font-weight: 600; font-size: 1rem; color: var(--apex-ink); }
+.pr-amp { color: var(--apex-gilt); font-style: italic; padding: 0 0.15em; }
+.pr-pub {
+  font-size: 0.58rem; font-weight: 700; letter-spacing: 0.16em;
+  text-transform: uppercase; color: #a8854a;
+}
+
+.pr-stage {
+  flex: 1;
+  width: 100%;
+  max-width: 560px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  text-align: center;
+}
+
+.pr-eyebrow, .pr-fresh {
+  font-size: 0.62rem; font-weight: 700; letter-spacing: 0.2em;
+  text-transform: uppercase; color: var(--apex-gilt);
+}
+.pr-beat {
+  font-family: var(--apex-font-display);
+  font-weight: 600;
+  font-size: clamp(1.6rem, 5vw, 2.4rem);
+  color: var(--apex-forest);
+  line-height: 1.05;
+}
+
+.pr-rule { width: 100%; max-width: 340px; }
+.pr-track { height: 5px; background: rgba(120, 90, 40, 0.16); border-radius: 3px; overflow: hidden; }
+.pr-fill { height: 100%; background: linear-gradient(90deg, var(--apex-gilt), #e3c873); border-radius: 3px; transition: width 0.4s var(--apex-ease); }
+.pr-count { font-size: 0.78rem; color: var(--apex-brown); margin-top: 0.5rem; letter-spacing: 0.03em; }
+
+.pr-bed {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: clamp(6px, 1.4vw, 10px);
+  margin-top: 0.4rem;
+}
+.pr-plate {
+  aspect-ratio: 3 / 4;
+  border-radius: 4px;
+  border: 1px solid var(--apex-field-border);
+  background: repeating-linear-gradient(135deg, #f6efdc, #f6efdc 5px, #f1e8d0 5px, #f1e8d0 10px);
+}
+.pr-plate.is-done {
+  border-color: var(--apex-forest-deep);
+  background: linear-gradient(160deg, var(--apex-forest), var(--apex-forest-deep));
+}
+.pr-plate.is-active {
+  border: 1.5px dashed var(--apex-gilt);
+  background: linear-gradient(160deg, #cfe0d6, #9ebfa6);
+  box-shadow: 0 0 0 3px rgba(199, 162, 62, 0.25);
+}
+
+.pr-cover {
+  width: clamp(160px, 40vw, 220px);
+  aspect-ratio: 3 / 4;
+  border-radius: 5px;
+  overflow: hidden;
+  border: 1px solid rgba(120, 80, 30, 0.4);
+  box-shadow: 0 14px 30px rgba(90, 60, 20, 0.28);
+  background: linear-gradient(160deg, #5b7d54, #2f4a36);
+}
+.pr-cover-img { width: 100%; height: 100%; object-fit: cover; }
+.pr-cover-wait { width: 100%; height: 100%; background: linear-gradient(160deg, #cfe0d6, #6f9b78); }
+
+.pr-jam { font-family: var(--apex-font-serif); font-style: italic; color: var(--apex-error); max-width: 32ch; line-height: 1.4; }
+
+.pr-ctas { display: flex; flex-wrap: wrap; gap: 0.6rem; justify-content: center; align-items: center; }
+.pr-read {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  background: var(--apex-forest); color: var(--apex-on-forest);
+  border-radius: 8px; padding: 0.6rem 1rem; font-size: 0.9rem; font-weight: 700;
+  box-shadow: 0 4px 10px rgba(62, 107, 74, 0.3); cursor: pointer;
+}
+.pr-read:hover { background: var(--apex-forest-deep); }
+.pr-ghost {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  background: var(--apex-surface); border: 1px solid var(--apex-field-border);
+  color: var(--apex-brown); border-radius: 8px; padding: 0.55rem 0.9rem;
+  font-size: 0.84rem; font-weight: 600; cursor: pointer;
+}
+.pr-ghost:hover { border-color: var(--apex-rule); color: var(--apex-ink-soft); }
+.pr-read:focus-visible, .pr-ghost:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--apex-focus); }
+
+@media (max-width: 560px) {
+  .pr-bed { grid-template-columns: repeat(4, 1fr); }
+  .pr-ctas { flex-direction: column; width: 100%; }
+  .pr-read, .pr-ghost { width: 100%; justify-content: center; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .press-room { animation: prFadeIn 0.25s var(--apex-ease); }
+  .pr-cover-img { animation: prDevelopIn 0.6s var(--apex-ease); }
+  .pr-plate.is-done { animation: prInk 0.3s var(--apex-ease); }
+  @keyframes prFadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes prDevelopIn { from { opacity: 0; filter: saturate(0.4) blur(4px); } to { opacity: 1; filter: none; } }
+  @keyframes prInk { from { transform: scale(0.86); opacity: 0.3; } to { transform: scale(1); opacity: 1; } }
+}
