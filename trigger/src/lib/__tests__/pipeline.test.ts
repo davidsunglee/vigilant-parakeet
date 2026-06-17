@@ -238,13 +238,20 @@ describe('runGenerationPipeline', () => {
     expect(db.setCoverPath).toHaveBeenCalledWith('story-1', 'stories/story-1/cover.png');
   });
 
-  it('generates page images at the crop-safe 3:4 portrait aspect', async () => {
+  it('renders chapter pages at 3:4 and the showdown/outcome at 3:2', async () => {
     const { deps, image } = makeDeps();
     await runGenerationPipeline(deps, PAYLOAD);
-    const pageCalls = (image.generateImage.mock.calls as any[][]).filter(
-      (call) => call[1]?.aspectRatio === '3:4',
-    );
-    expect(pageCalls).toHaveLength(14);
+    const calls = image.generateImage.mock.calls as any[][];
+    const aspectFor = (visualPrompt: string) =>
+      calls.find((c) => c[0] === visualPrompt)?.[1]?.aspectRatio;
+
+    // Showdown (31) and outcome (32) are landscape, matching the cover.
+    expect(aspectFor('Both animals staring')).toBe('3:2');
+    expect(aspectFor('Lion stands victorious')).toBe('3:2');
+
+    // 12 chapter pages stay portrait; the 3:2 calls are cover + showdown + outcome.
+    expect(calls.filter((c) => c[1]?.aspectRatio === '3:4')).toHaveLength(12);
+    expect(calls.filter((c) => c[1]?.aspectRatio === '3:2')).toHaveLength(3);
   });
 
   it('skips all image generation when every object already exists (cached resume → 0 generations)', async () => {

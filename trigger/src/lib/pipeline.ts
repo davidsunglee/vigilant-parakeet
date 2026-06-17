@@ -298,8 +298,11 @@ Animal B: ${visualAnchor.animalB.fullDescription}`;
           if (completed > 0) {
             await timers.sleep(INTER_REQUEST_DELAY_MS);
           }
+          // Showdown (31) and outcome (32) are landscape hero pages, matching the
+          // cover; chapter pages stay portrait vignettes.
+          const aspectRatio = page.index === 31 || page.index === 32 ? '3:2' : '3:4';
           const base64 = await deps.image.generateImage(page.visualPrompt, {
-            aspectRatio: '3:4',
+            aspectRatio,
             styleAnchor: artStyleAnchor,
           });
           await deps.storage.uploadImage(pagePath, base64);
