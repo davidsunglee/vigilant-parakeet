@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { Search } from 'lucide-react';
 import { StoryRecord } from '../../types/story.types';
 import { CatalogService, CreateStoryInput } from '../../services/CatalogService';
@@ -250,7 +251,7 @@ export const Dashboard: React.FC<{ onReadStory: (id: string) => void }> = ({ onR
           {watchingId && (() => {
             const watched = stories.find((s) => s.id === watchingId);
             if (!watched) return null;
-            return (
+            return createPortal(
               <PressRoom
                 story={watched}
                 coverUrl={watched.cover_image_path ? coverUrls[watched.cover_image_path] : undefined}
@@ -261,7 +262,8 @@ export const Dashboard: React.FC<{ onReadStory: (id: string) => void }> = ({ onR
                   setWatchingId(null);
                 }}
                 onClose={() => setWatchingId(null)}
-              />
+              />,
+              document.body,
             );
           })()}
         </>
