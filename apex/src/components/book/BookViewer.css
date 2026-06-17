@@ -103,14 +103,18 @@
 /* ---- Hero pages (cover, showdown, verdict): full 3:2 art + text panel below ---- */
 .rd-hero {
   display: flex; flex-direction: column;
-  width: min(820px, 92vw); max-height: 84vh;
+  width: min(820px, 92vw); max-height: 90vh;
   border: 1px solid var(--apex-gilt); border-radius: 5px; overflow: hidden;
   background: linear-gradient(170deg, var(--apex-surface), var(--apex-paper));
   box-shadow: 0 16px 40px rgba(90, 60, 20, 0.24);
 }
+/* The art box stays a true 3:2 (height follows width), so object-fit: cover
+   fills it without cropping. flex-shrink: 0 holds that height; the panel below
+   takes the remaining space and scrolls on short viewports, so the full art is
+   never sliced to make room. */
 .rd-hero-art {
   position: relative; width: 100%; aspect-ratio: 3 / 2;
-  max-height: 56vh; flex-shrink: 0; overflow: hidden;
+  flex-shrink: 0; overflow: hidden;
   background: linear-gradient(150deg, #cdb88f, #6f5733);
 }
 .rd-hero-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
