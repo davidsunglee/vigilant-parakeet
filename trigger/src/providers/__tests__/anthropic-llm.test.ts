@@ -70,22 +70,22 @@ describe('AnthropicLlmAdapter', () => {
       expect(result).toEqual({ data: ['x', 'y'] });
     });
 
-    it('uses DEFAULT_MODEL when request.model is not provided', async () => {
+    it('falls back to the default text model when request.model is not provided', async () => {
       const { adapter, create } = buildAdapter([
         { type: 'tool_use', id: 't1', name: 'structured_output', input: { name: 'A' } },
       ]);
       await adapter.generate(objectSchema);
       const callArgs = create.mock.calls[0][0];
-      expect(callArgs.model).toBe('claude-sonnet-4-20250514');
+      expect(callArgs.model).toBe('claude-sonnet-4-6');
     });
 
     it('uses request.model when provided', async () => {
       const { adapter, create } = buildAdapter([
         { type: 'tool_use', id: 't1', name: 'structured_output', input: { name: 'A' } },
       ]);
-      await adapter.generate({ ...objectSchema, model: 'claude-sonnet-4-20250514' });
+      await adapter.generate({ ...objectSchema, model: 'claude-sonnet-4-6' });
       const callArgs = create.mock.calls[0][0];
-      expect(callArgs.model).toBe('claude-sonnet-4-20250514');
+      expect(callArgs.model).toBe('claude-sonnet-4-6');
     });
 
     it('passes systemPrompt as system parameter', async () => {

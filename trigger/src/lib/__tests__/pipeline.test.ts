@@ -246,14 +246,14 @@ describe('userId threading at the client layer', () => {
     const adapter = {
       generate: mock(async () => ({ data: mockProfileA })),
     };
-    const client = new LlmClient(adapter as unknown as ILlmProvider, 'claude-sonnet-4-20250514', 'owner-xyz');
+    const client = new LlmClient(adapter as unknown as ILlmProvider, 'claude-sonnet-4-6', 'owner-xyz');
 
     await client.getAnimalProfile('Lion');
 
     expect(adapter.generate).toHaveBeenCalledTimes(1);
     const arg = (adapter.generate.mock.calls[0] as any[])[0];
     expect(arg.userId).toBe('owner-xyz');
-    expect(arg.model).toBe('claude-sonnet-4-20250514');
+    expect(arg.model).toBe('claude-sonnet-4-6');
   });
 
   it('threads userId and quality into the image adapter call', async () => {

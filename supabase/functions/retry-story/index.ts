@@ -106,11 +106,6 @@ export async function handleRequest(req: Request, deps: Deps = defaultDeps): Pro
             animalA: story.animal_a,
             animalB: story.animal_b,
             options: { artStyle: story.art_style, fierceMode: story.fierce_mode },
-            generationConfig: {
-              textModel: "claude-sonnet-4-20250514",
-              imageModel: "gpt-image-2",
-              imageQuality: "medium",
-            },
           },
         }),
       },

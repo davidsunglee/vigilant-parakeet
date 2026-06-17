@@ -1,7 +1,7 @@
 import { task } from '@trigger.dev/sdk';
 import { AnthropicLlmAdapter } from '../providers/anthropic-llm';
 import { OpenAiImageAdapter } from '../providers/openai-image';
-import type { ImageRequest } from '../providers/types';
+import { DEFAULT_GENERATION_CONFIG, type GenerationConfig } from '../config';
 import { LlmClient } from '../lib/llm';
 import { ImageClient } from '../lib/image';
 import {
@@ -20,23 +20,9 @@ import {
   fail,
 } from '../lib/db';
 
-/** Per-request model + quality selection, chosen server-side (never by the client). */
-export interface GenerationConfig {
-  textModel: string;
-  imageModel: string;
-  // Reuses the provider's image quality union as the single source of truth so
-  // the discrete levels aren't re-spelled here.
-  imageQuality: NonNullable<ImageRequest['quality']>;
-}
-
 // Must match `retry.maxAttempts` below; used to detect the terminal attempt so
 // only an exhausted run records the `failed` state.
 const MAX_ATTEMPTS = 3;
-
-// Default model/quality if the trigger payload omits or partially fills config.
-const DEFAULT_TEXT_MODEL = 'claude-sonnet-4-20250514';
-const DEFAULT_IMAGE_MODEL = 'gpt-image-2';
-const DEFAULT_IMAGE_QUALITY: GenerationConfig['imageQuality'] = 'medium';
 
 export const generateStory = task({
   id: "generate-story",
@@ -48,11 +34,11 @@ export const generateStory = task({
     payload: GenerateStoryPayload & { generationConfig?: Partial<GenerationConfig> },
     { ctx },
   ) => {
-    // Step 7: apply defaults for an absent or partial generationConfig.
+    // Apply the server-side generation defaults for an absent or partial config.
     const generationConfig: GenerationConfig = {
-      textModel: payload.generationConfig?.textModel ?? DEFAULT_TEXT_MODEL,
-      imageModel: payload.generationConfig?.imageModel ?? DEFAULT_IMAGE_MODEL,
-      imageQuality: payload.generationConfig?.imageQuality ?? DEFAULT_IMAGE_QUALITY,
+      textModel: payload.generationConfig?.textModel ?? DEFAULT_GENERATION_CONFIG.textModel,
+      imageModel: payload.generationConfig?.imageModel ?? DEFAULT_GENERATION_CONFIG.imageModel,
+      imageQuality: payload.generationConfig?.imageQuality ?? DEFAULT_GENERATION_CONFIG.imageQuality,
     };
 
     // Provider keys come from the Trigger.dev environment, never the client.

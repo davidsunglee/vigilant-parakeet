@@ -1,7 +1,6 @@
 import OpenAI from 'openai';
+import { DEFAULT_GENERATION_CONFIG } from '../config';
 import type { IImageProvider, ImageRequest, ImageResponse } from './types';
-
-const DEFAULT_MODEL = 'gpt-image-2';
 
 const GPT_IMAGE_SIZES: Record<string, string> = {
   '1:1': '1024x1024',
@@ -39,7 +38,7 @@ export class OpenAiImageAdapter implements IImageProvider {
   }
 
   async generate(request: ImageRequest): Promise<ImageResponse> {
-    const model = request.model ?? DEFAULT_MODEL;
+    const model = request.model ?? DEFAULT_GENERATION_CONFIG.imageModel;
     const size = mapAspectRatioToSize(request.aspectRatio, model);
     const isDalle = model.startsWith('dall-e');
 

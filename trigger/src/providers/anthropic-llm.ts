@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { DEFAULT_GENERATION_CONFIG } from '../config';
 import type { ILlmProvider, LlmRequest, LlmResponse } from './types';
 
-const DEFAULT_MODEL = 'claude-sonnet-4-20250514';
 const TOOL_NAME = 'structured_output';
 
 export class AnthropicLlmAdapter implements ILlmProvider {
@@ -13,7 +13,7 @@ export class AnthropicLlmAdapter implements ILlmProvider {
   }
 
   async generate(request: LlmRequest): Promise<LlmResponse> {
-    const model = request.model ?? DEFAULT_MODEL;
+    const model = request.model ?? DEFAULT_GENERATION_CONFIG.textModel;
 
     // Anthropic requires input_schema to be type: 'object' at root.
     // Wrap non-object schemas (e.g. arrays) in an object envelope.
