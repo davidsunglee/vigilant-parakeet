@@ -8,6 +8,7 @@ import { BookPage } from './BookPage';
 import { TaleOfTheTape } from './TaleOfTheTape';
 import { Verdict } from './Verdict';
 import { ClosingPage } from './ClosingPage';
+import { Showdown } from './Showdown';
 import { ReaderChrome } from './ReaderChrome';
 import './BookViewer.css';
 
@@ -61,21 +62,8 @@ function renderView(
           />
         </div>
       );
-    case 'showdown': {
-      const url = view.page.imageUrl ? signed[view.page.imageUrl] : undefined;
-      return (
-        <div className="rd-showdown">
-          {url && (
-            <img src={url} alt="The showdown" className="rd-showdown-img" loading="lazy" decoding="async" />
-          )}
-          <div className="rd-showdown-scrim" aria-hidden="true" />
-          <div className="rd-showdown-caption">
-            <span className="rd-showdown-kicker">The Showdown</span>
-            <p>{view.page.bodyText}</p>
-          </div>
-        </div>
-      );
-    }
+    case 'showdown':
+      return <Showdown page={view.page} signed={signed} />;
     case 'tape':
       return <TaleOfTheTape manifest={story} />;
     case 'verdict':

@@ -133,20 +133,9 @@
 .rd-cover-name { font-family: var(--apex-font-display); font-weight: 600; font-size: 1.15rem; color: var(--apex-ink); }
 .rd-cover-amp { font-family: var(--apex-font-display); font-size: 1.45rem; color: var(--apex-gilt); line-height: 1; }
 
-/* ---- Showdown ---- */
-.rd-showdown, .rd-verdict {
-  position: relative; width: min(940px, 95vw); height: min(82vh, 66vw);
-  border-radius: 5px; overflow: hidden; box-shadow: 0 16px 40px rgba(90, 60, 20, 0.24);
-  background: linear-gradient(150deg, #cdb88f, #6f5733);
-}
-.rd-showdown-img, .rd-verdict-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.rd-showdown-scrim, .rd-verdict-scrim { position: absolute; inset: 0; z-index: 1; background: linear-gradient(180deg, rgba(35, 24, 12, 0.28), rgba(35, 24, 12, 0.06) 42%, rgba(35, 24, 12, 0.5)); }
-.rd-showdown-caption {
-  position: absolute; left: 0; right: 0; bottom: 1.4rem; z-index: 2; text-align: center; padding: 0 1.5rem;
-  color: var(--apex-on-forest);
-}
-.rd-showdown-kicker { display: block; font-size: 0.6rem; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: rgba(253, 250, 241, 0.9); margin-bottom: 0.3rem; }
-.rd-showdown-caption p { font-family: var(--apex-font-serif); font-style: italic; font-size: 1.05rem; text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4); }
+/* Showdown panel */
+.rd-showdown-kicker { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: #a8854a; }
+.rd-showdown-text { font-family: var(--apex-font-serif); font-style: italic; font-size: 1.02rem; line-height: 1.5; color: var(--apex-ink-soft); }
 
 /* ---- Verdict ---- */
 .rd-verdict-cartouche {
