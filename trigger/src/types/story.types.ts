@@ -93,3 +93,17 @@ export interface IStoryManifestLite {
 
 // Utility pattern for Prompt Engineering mapping
 export type PromptStructure<T> = Record<keyof T, undefined>;
+
+/**
+ * Canonical, normalized generation progress. The pipeline owns the phase and the
+ * page/total during illustration; the client owns the display copy and percent.
+ * Terminal states live on the row `status` ('ready' | 'failed'), not here.
+ * Keep this structurally identical to the copy in apex/src/types/story.types.ts.
+ */
+export type StoryProgress =
+  | { phase: 'queued' }
+  | { phase: 'researching' }
+  | { phase: 'designing' }
+  | { phase: 'simulating' }
+  | { phase: 'illustrating'; page: number; total: number }
+  | { phase: 'binding' };

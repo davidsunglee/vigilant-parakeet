@@ -34,26 +34,23 @@ function createFakeClient() {
 }
 
 describe('db helpers', () => {
-  it('updateProgress issues an update with progress_step/progress_pct', async () => {
+  it('updateProgress issues an update with the canonical progress', async () => {
     const { client, calls } = createFakeClient();
-    await updateProgress(client, 'story-1', 'Writing the showdown…', 42);
+    await updateProgress(client, 'story-1', { phase: 'illustrating', page: 7, total: 14 });
     expect(calls.table).toBe('stories');
     expect(calls.id).toBe('story-1');
-    expect(calls.payload).toEqual({
-      progress_step: 'Writing the showdown…',
-      progress_pct: 42,
-    });
+    expect(calls.payload).toEqual({ progress: { phase: 'illustrating', page: 7, total: 14 } });
   });
 
-  it('finalize sets status=ready and progress_pct=100', async () => {
+  it('finalize sets status=ready with manifest and title and no percent', async () => {
     const { client, calls } = createFakeClient();
     const manifest = { metadata: { title: 'Lion vs Bear' } } as unknown as IStoryManifest;
     await finalize(client, 'story-2', manifest, 'Lion vs Bear');
     expect(calls.id).toBe('story-2');
     expect(calls.payload?.status).toBe('ready');
-    expect(calls.payload?.progress_pct).toBe(100);
     expect(calls.payload?.title).toBe('Lion vs Bear');
     expect(calls.payload?.manifest).toBe(manifest);
+    expect(calls.payload).not.toHaveProperty('progress_pct');
   });
 
   it('fail sets status=failed and error', async () => {

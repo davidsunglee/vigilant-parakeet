@@ -79,8 +79,7 @@ export const generateStory = task({
       },
       db: {
         loadCheckpoint: (storyId) => loadCheckpoint(client, storyId),
-        updateProgress: (storyId, step, pct) =>
-          updateProgress(client, storyId, step, pct),
+        updateProgress: (storyId, progress) => updateProgress(client, storyId, progress),
         saveManifest: (storyId, manifest) => saveManifest(client, storyId, manifest),
         setCoverPath: (storyId, path) => setCoverPath(client, storyId, path),
       },

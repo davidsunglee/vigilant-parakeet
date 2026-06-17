@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { IStoryManifest } from '../types/story.types';
+import type { IStoryManifest, StoryProgress } from '../types/story.types';
 
 /**
  * `stories`-row helpers for the generation task. Each takes the service-role
@@ -25,16 +25,15 @@ export async function loadCheckpoint(
   return (data?.manifest as Partial<IStoryManifest> | null) ?? null;
 }
 
-/** Write the live progress step + percent so Realtime subscribers see it. */
+/** Write the live canonical progress so Realtime subscribers see it. */
 export async function updateProgress(
   client: SupabaseClient,
   storyId: string,
-  step: string,
-  pct: number,
+  progress: StoryProgress,
 ): Promise<void> {
   const { error } = await client
     .from('stories')
-    .update({ progress_step: step, progress_pct: pct })
+    .update({ progress })
     .eq('id', storyId);
   if (error) throw error;
 }
@@ -82,7 +81,7 @@ export async function finalize(
 ): Promise<void> {
   const { error } = await client
     .from('stories')
-    .update({ manifest, title, status: 'ready', progress_pct: 100 })
+    .update({ manifest, title, status: 'ready' })
     .eq('id', storyId);
   if (error) throw error;
 }

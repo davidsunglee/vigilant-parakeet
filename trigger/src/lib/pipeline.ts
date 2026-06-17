@@ -5,6 +5,7 @@ import {
   IAnimalEntity,
   IPageContent,
   ITraitChecklist,
+  StoryProgress,
 } from '../types/story.types';
 import {
   FIERCE_MODE_DESCRIPTOR,
@@ -63,7 +64,7 @@ export interface PipelineDeps {
   };
   db: {
     loadCheckpoint(storyId: string): Promise<Partial<IStoryManifest> | null>;
-    updateProgress(storyId: string, step: string, pct: number): Promise<void>;
+    updateProgress(storyId: string, progress: StoryProgress): Promise<void>;
     saveManifest(storyId: string, manifest: Partial<IStoryManifest>): Promise<void>;
     setCoverPath(storyId: string, path: string): Promise<void>;
   };
@@ -122,7 +123,7 @@ export async function runGenerationPipeline(
     animalA = cp.animalA;
     animalB = cp.animalB;
   } else {
-    await deps.db.updateProgress(storyId, 'Researching animal profiles...', 5);
+    await deps.db.updateProgress(storyId, { phase: 'researching' });
     const [profileA, profileB] = await Promise.all([
       deps.llm.getAnimalProfile(animalAQuery),
       deps.llm.getAnimalProfile(animalBQuery),
@@ -137,7 +138,7 @@ export async function runGenerationPipeline(
   if (cp?.visualAnchor) {
     visualAnchor = cp.visualAnchor;
   } else {
-    await deps.db.updateProgress(storyId, 'Designing animal illustrations...', 10);
+    await deps.db.updateProgress(storyId, { phase: 'designing' });
     visualAnchor = await deps.llm.getAnimalVisualDescriptions(animalA, animalB, {
       fixedArtStyle,
       fierceMode,
@@ -189,7 +190,7 @@ Animal B: ${visualAnchor.animalB.fullDescription}`;
     const endingType = determineEndingType(isSurpriseEnding);
     const winnerId = isSurpriseEnding ? 'none' : (Math.random() > 0.5 ? 'animalA' : 'animalB');
 
-    await deps.db.updateProgress(storyId, 'Simulating the showdown...', 15);
+    await deps.db.updateProgress(storyId, { phase: 'simulating' });
     const [outcomeData, aspectsA, aspectsB, generatedCover] = await Promise.all([
       deps.llm.getShowdownAndOutcome(
         animalA,
@@ -260,10 +261,10 @@ Animal B: ${visualAnchor.animalB.fullDescription}`;
   }
 
   // 5. Generate page images (skip-if-exists), bounded for the OpenAI path.
-  await deps.db.updateProgress(storyId, 'Illustrating pages...', 25);
+  const total = rawPages.length;
+  await deps.db.updateProgress(storyId, { phase: 'illustrating', page: 0, total });
   const limit = pLimit(2);
   let completed = 0;
-  const total = rawPages.length;
   const finalPages = await Promise.all(
     rawPages.map((page) =>
       limit(async () => {
@@ -279,18 +280,14 @@ Animal B: ${visualAnchor.animalB.fullDescription}`;
           await deps.storage.uploadImage(pagePath, base64);
         }
         completed++;
-        await deps.db.updateProgress(
-          storyId,
-          `Illustrating page ${completed} of ${total}...`,
-          Math.round(25 + (completed / total) * 70),
-        );
+        await deps.db.updateProgress(storyId, { phase: 'illustrating', page: completed, total });
         return { ...page, imageUrl: pagePath };
       }),
     ),
   );
 
   // 6. Assemble the manifest (Storage paths in image fields, never base64).
-  await deps.db.updateProgress(storyId, 'Saving your story...', 98);
+  await deps.db.updateProgress(storyId, { phase: 'binding' });
 
   const manifest: IStoryManifest = {
     metadata: {

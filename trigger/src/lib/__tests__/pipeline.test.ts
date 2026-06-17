@@ -3,6 +3,7 @@ import { runGenerationPipeline, timers, type GenerateStoryPayload } from '../pip
 import { LlmClient } from '../llm';
 import { ImageClient } from '../image';
 import type { IImageProvider, ILlmProvider } from '../../providers/types';
+import type { StoryProgress } from '../../types/story.types';
 
 const mockProfileA = {
   scientificName: 'Panthera leo',
@@ -71,7 +72,7 @@ function makeDeps(overrides?: {
   imageExists?: () => Promise<boolean>;
   loadCheckpoint?: () => Promise<any>;
 }) {
-  const progressCalls: Array<[string, number]> = [];
+  const progressCalls: StoryProgress[] = [];
   const uploadedPaths: string[] = [];
 
   const llm = {
@@ -95,8 +96,8 @@ function makeDeps(overrides?: {
 
   const db = {
     loadCheckpoint: mock(overrides?.loadCheckpoint ?? (async () => null)),
-    updateProgress: mock(async (_id: string, step: string, pct: number) => {
-      progressCalls.push([step, pct]);
+    updateProgress: mock(async (_id: string, progress: StoryProgress) => {
+      progressCalls.push(progress);
     }),
     saveManifest: mock(async () => {}),
     setCoverPath: mock(async () => {}),
@@ -185,21 +186,27 @@ describe('runGenerationPipeline', () => {
     expect(manifest.pages[13].imageUrl).toBe('stories/story-1/32.png');
   });
 
-  it('calls updateProgress at the milestone steps with integer percentages', async () => {
+  it('emits the canonical progress phases in order, with per-page page/total', async () => {
     const { deps, progressCalls } = makeDeps();
     await runGenerationPipeline(deps, PAYLOAD);
 
-    const steps = progressCalls.map(([step]) => step);
-    expect(steps).toContain('Researching animal profiles...');
-    expect(steps).toContain('Designing animal illustrations...');
-    expect(steps).toContain('Simulating the showdown...');
-    expect(steps).toContain('Illustrating pages...');
-    expect(steps).toContain('Saving your story...');
+    const phases = progressCalls.map((p) => p.phase);
+    expect(phases).toContain('researching');
+    expect(phases).toContain('designing');
+    expect(phases).toContain('simulating');
+    expect(phases).toContain('illustrating');
+    expect(phases).toContain('binding');
 
-    const perPage = progressCalls.filter(([step]) => /^Illustrating page \d+ of 14\.\.\.$/.test(step));
-    expect(perPage).toHaveLength(14);
-    expect(progressCalls.every(([, pct]) => Number.isInteger(pct))).toBe(true);
-    expect(progressCalls[progressCalls.length - 1]).toEqual(['Saving your story...', 98]);
+    const illustrating = progressCalls.filter(
+      (p): p is Extract<StoryProgress, { phase: 'illustrating' }> => p.phase === 'illustrating',
+    );
+    // A "start" at page 0 plus one per finished page (14), all carrying total 14.
+    expect(illustrating.every((p) => p.total === 14)).toBe(true);
+    const pages = illustrating.map((p) => p.page).sort((a, b) => a - b);
+    expect(pages).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]);
+
+    // Binding is the last progress emitted before finalize.
+    expect(progressCalls[progressCalls.length - 1]).toEqual({ phase: 'binding' });
   });
 
   it('records cover_image_path even when the cover object already exists (skip-if-exists resume)', async () => {
