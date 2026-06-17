@@ -89,7 +89,7 @@ export function PressRoom({ story, coverUrl, onReadStory, onRetry, onDelete, onC
       ) : (
         <div className="pr-stage">
           <p className="rr-sr-only" aria-live="polite" aria-atomic="true">
-            Generating — {view.label}
+            On the press: {view.label}
           </p>
           <p className="pr-eyebrow">On the press</p>
           <h2 className="pr-beat">{view.label}</h2>
