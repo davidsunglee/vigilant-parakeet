@@ -92,6 +92,18 @@ export interface IStoryManifestLite {
 export type PromptStructure<T> = Record<keyof T, undefined>;
 
 /**
+ * Canonical, normalized generation progress stored in `stories.progress`.
+ * Keep this structurally identical to the copy in trigger/src/types/story.types.ts.
+ */
+export type StoryProgress =
+  | { phase: 'queued' }
+  | { phase: 'researching' }
+  | { phase: 'designing' }
+  | { phase: 'simulating' }
+  | { phase: 'illustrating'; page: number; total: number }
+  | { phase: 'binding' };
+
+/**
  * Lifecycle status of a story row in the Postgres `stories` catalog.
  */
 export type StoryStatus = 'generating' | 'ready' | 'failed';
