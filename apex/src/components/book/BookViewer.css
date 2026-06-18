@@ -60,9 +60,10 @@
 .rd-single { width: min(460px, 92vw); height: min(82vh, 132vw); gap: 0; background: none; }
 
 .rd-page {
+  --rd-page-pad-x: clamp(0.9rem, 2.4vw, 1.2rem);
   flex: 1; position: relative; overflow: hidden;
   display: flex; flex-direction: column;
-  padding: clamp(0.8rem, 2.2vw, 1.1rem) clamp(0.9rem, 2.4vw, 1.2rem) 1.6rem;
+  padding: clamp(0.8rem, 2.2vw, 1.1rem) var(--rd-page-pad-x) 1.6rem;
   background: linear-gradient(170deg, var(--apex-surface), var(--apex-paper));
 }
 .rd-page--left { border-radius: 5px 0 0 5px; }
@@ -74,10 +75,14 @@
 .rd-page-rule { width: 42px; height: 1px; background: var(--apex-rule); margin-top: 4px; }
 
 .rd-vignette { height: 60%; flex-shrink: 0; margin-bottom: 0.7rem; }
+/* The art breaks out of the page's horizontal padding so it bleeds to both
+   page edges (gutter + outer), clipped by .rd-page's overflow: hidden. Square
+   corners, no float shadow: full bleed within its allocated band, matching the
+   hero pages. */
 .rd-vignette-img {
-  width: 100%; height: 100%; object-fit: cover;
-  border-radius: 50% 48% 52% 50% / 50% 52% 48% 50%;
-  box-shadow: 0 3px 12px rgba(60, 40, 15, 0.16);
+  width: calc(100% + 2 * var(--rd-page-pad-x)); height: 100%;
+  margin-left: calc(-1 * var(--rd-page-pad-x));
+  object-fit: cover; display: block;
 }
 .rd-vignette-placeholder {
   width: 100%; height: 100%;
